@@ -13,7 +13,11 @@ from app.core.crypto import (
     compute_merkle_root,
 )
 from app.ledger.schema import EventModel, EventType
-from app.ledger.reducer import calculate_account_state, calculate_all_accounts
+from app.ledger.reducer import (
+    calculate_account_state,
+    calculate_all_accounts,
+    calculate_community_metrics,
+)
 
 
 class LedgerError(Exception):
@@ -77,10 +81,14 @@ class EventLedger:
             )
 
         # 3. Verify signatures based on event type
-        # For cash transactions (DEPOSIT_CASH, WITHDRAWAL_CASH), dual signatures are strictly mandatory:
-        # - user_sig signed by the customer via NFC/QR
-        # - teller_sig signed by the authorized teller
-        if event.event_type in (EventType.DEPOSIT_CASH, EventType.WITHDRAWAL_CASH):
+        # For transactions requiring dual multi-sig:
+        # - DEPOSIT_CASH, WITHDRAWAL_CASH, LOAN_DISBURSED, SOCIAL_FUND_PAYOUT
+        if event.event_type in (
+            EventType.DEPOSIT_CASH,
+            EventType.WITHDRAWAL_CASH,
+            EventType.LOAN_DISBURSED,
+            EventType.SOCIAL_FUND_PAYOUT,
+        ):
             if not event.signatures.user_sig:
                 raise CryptographicError(
                     f"Transaction type {event.event_type.value} requires user signature via NFC/QR"
@@ -102,6 +110,22 @@ class EventLedger:
         elif event.event_type == EventType.DEPOSIT_MOBILE_MONEY:
             if not event.signatures.teller_sig:
                 raise CryptographicError("Gateway signature is required for mobile money")
+
+        elif event.event_type in (
+            EventType.LOAN_REPAID,
+            EventType.SOCIAL_FUND_CONTRIBUTION,
+            EventType.INTEREST_APPLIED,
+        ):
+            if not event.signatures.teller_sig:
+                raise CryptographicError(f"Teller signature is required for {event.event_type.value}")
+            if event.signatures.user_sig:
+                user_valid = verify_signature(
+                    public_key_hex=event.payload.user_public_key,
+                    payload=payload_dict,
+                    signature_hex=event.signatures.user_sig,
+                )
+                if not user_valid:
+                    raise CryptographicError("Invalid user signature on payload")
 
     async def append_event(self, event: EventModel) -> EventModel:
         """Verify and atomically append an event to the ledger."""
@@ -167,6 +191,11 @@ class EventLedger:
         """Compute balances for all accounts across the cooperative."""
         events = await self.get_all_events()
         return calculate_all_accounts(events)
+
+    async def get_community_metrics(self) -> dict[str, float]:
+        """Compute community-wide VSLA metrics (savings, loans, welfare)."""
+        events = await self.get_all_events()
+        return calculate_community_metrics(events)
 
     async def get_merkle_root(self) -> str:
         """Compute the Merkle tree root of all event hashes in the ledger."""

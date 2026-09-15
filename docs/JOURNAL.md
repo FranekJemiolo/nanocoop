@@ -115,20 +115,43 @@ This journal tracks all architecture decisions, milestones executed, test output
 
 ---
 
-## [Entry 008] GitHub Actions CI/CD Pipeline Validation
-- **Timestamp:** 2026-09-15T19:35:00Z
-- **Objective:** Ensure 100% of CI checks succeed in GitHub Actions on the remote repository.
+---
+
+## [Entry 009] Milestone 7 & 8: VSLA Microfinance Domain Logic & Production Telecom Integrations
+- **Timestamp:** 2026-09-15T20:10:00Z
+- **Objective:** Extend NanoCoop to support full VSLA microfinance domain logic (micro-loans, repayments, social emergency funds) and production telecom gateways (Safaricom Daraja M-Pesa, MTN Mobile Money, Africa's Talking).
 - **Actions Executed:**
-  - Resolved TruffleHog argument configuration for automated filesystem secret scanning.
-  - Granted `contents: write` permissions for GitHub Actions to deploy to `gh-pages`.
-  - Verified remote workflow run `35001995145` on `FranekJemiolo/nanocoop`.
-- **Results:**
-  - `✓ Teller App CI (nanocoop-teller)`: Passed (27s)
-  - `✓ Backend CI (nanocoop-core)`: Passed (14s) with >=85% code coverage
-  - `✓ Secret & Credential Scanning (Zero-Leak Policy)`: Passed (12s)
-  - `✓ SMS Bridge CI (nanocoop-sms-bridge)`: Passed (27s)
-  - `✓ Build & Deploy Expo Web Demo`: Passed (42s)
-  - `✓ Build Standalone Android APK Release Artifacts`: Passed (26s)
-  - **All 6/6 CI checks green.**
+  - Expanded Event Schema with `LOAN_DISBURSED`, `LOAN_REPAID`, `SOCIAL_FUND_CONTRIBUTION`, `SOCIAL_FUND_PAYOUT`.
+  - Upgraded State Reducer to track member savings, outstanding loans, social emergency contributions, net financial position, and cooperative capital.
+  - Implemented async client for Safaricom Daraja M-Pesa (`app/integrations/daraja.py`) supporting OAuth tokens, STK Push (`Lipa Na M-Pesa Online`), and C2B validation/confirmation hooks.
+  - Implemented async client for MTN Mobile Money Open API (`app/integrations/mtn_momo.py`) supporting Collections RequestToPay, reference polling, and webhook callbacks.
+  - Implemented cloud SMS gateway receiver for Africa's Talking (`app/integrations/africas_talking.py`) with telecom regex parsers and outbound passbook SMS generators.
+  - Added REST endpoints for loans (`/api/v1/loans/disburse`, `/api/v1/loans/repay`), social funds (`/api/v1/welfare/contribute`, `/api/v1/welfare/payout`), and telecom webhooks.
+  - Documented all token/credential settings in `.env.example`.
+
+---
+
+## [Entry 010] Milestone 9 & 10: 100% Cryptographic Test Coverage & Teller UI Hub
+- **Timestamp:** 2026-09-15T20:15:00Z
+- **Objective:** Attain 100% code coverage across all core ledger and integration modules, build Teller VSLA & Telecom hub, and verify containerized test passes.
+- **Actions Executed:**
+  - Authored comprehensive test suites: `test_vsla_reducer.py`, `test_ledger_complete.py`, `test_integrations.py`, `test_api_integrations_and_vsla.py`, and `test_main_lifespan.py`.
+  - Achieved **100.00% statement and branch test coverage** across all modules in `nanocoop-core`:
+    - `app/api/routes.py`: 100%
+    - `app/core/crypto.py`: 100%
+    - `app/core/config.py`: 100%
+    - `app/db/database.py`: 100%
+    - `app/integrations/daraja.py`: 100%
+    - `app/integrations/mtn_momo.py`: 100%
+    - `app/integrations/africas_talking.py`: 100%
+    - `app/ledger/ledger.py`: 100%
+    - `app/ledger/reducer.py`: 100%
+    - `app/ledger/schema.py`: 100%
+    - `app/main.py`: 100%
+  - Executed local containerized Docker Compose test suite (`./scripts/run_docker_tests.sh`): 43/43 tests passed in 1.01s with 100.00% coverage against SQLite WAL volume.
+  - Created `VslaScreen.tsx` and `IntegrationsScreen.tsx` in `nanocoop-teller`.
+  - Added 5-tab navigation to `App.tsx` (Vault, Transact, VSLA Loans, Telecom, Audit).
+  - Validated React Native tests: 5/5 Jest tests passing.
+  - Rebuilt static web bundle: `npm run build:web` exported to `dist/`.
 
 

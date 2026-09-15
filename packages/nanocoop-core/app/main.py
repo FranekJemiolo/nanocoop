@@ -42,7 +42,7 @@ async def health_check() -> dict[str, str]:
     return {"status": "healthy", "service": "nanocoop-core"}
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
     uvicorn.run(

@@ -4,6 +4,9 @@ export interface EventPayload {
   user_public_key: string;
   reference?: string;
   notes?: string;
+  loan_id?: string;
+  interest_rate?: number;
+  term_months?: number;
 }
 
 export interface EventSignatures {
@@ -14,7 +17,15 @@ export interface EventSignatures {
 export interface EventModel {
   event_id: string;
   timestamp: number;
-  event_type: 'DEPOSIT_CASH' | 'WITHDRAWAL_CASH' | 'DEPOSIT_MOBILE_MONEY' | 'INTEREST_APPLIED';
+  event_type:
+    | 'DEPOSIT_CASH'
+    | 'WITHDRAWAL_CASH'
+    | 'DEPOSIT_MOBILE_MONEY'
+    | 'LOAN_DISBURSED'
+    | 'LOAN_REPAID'
+    | 'SOCIAL_FUND_CONTRIBUTION'
+    | 'SOCIAL_FUND_PAYOUT'
+    | 'INTEREST_APPLIED';
   payload: EventPayload;
   previous_hash: string;
   signatures: EventSignatures;
@@ -24,12 +35,20 @@ export interface EventModel {
 export interface AccountState {
   user_public_key: string;
   current_balance: number;
+  savings_balance?: number;
+  loan_balance?: number;
+  social_fund_contributions?: number;
+  net_balance?: number;
   last_activity: number | null;
   currency: string;
 }
 
 export interface CommunityStats {
   total_balance: number;
+  total_savings?: number;
+  total_loans_outstanding?: number;
+  total_social_fund?: number;
+  total_capital?: number;
   total_members: number;
   total_events: number;
   merkle_root: string;

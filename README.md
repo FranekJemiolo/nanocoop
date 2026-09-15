@@ -278,46 +278,66 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit -
 
 ## 📡 REST API Reference
 
+## 📡 REST API Reference
+
+### Core Ledger & Account Endpoints
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/health` | Service health status |
-| `GET` | `/api/v1/stats` | Vault balance, member count, event count, and Merkle root |
+| `GET` | `/api/v1/stats` | Vault balance, savings, loan portfolio, welfare fund, and Merkle root |
 | `GET` | `/api/v1/events` | Cursor-paginated immutable event log |
 | `POST` | `/api/v1/events` | Submit dual-signed transaction event |
 | `GET` | `/api/v1/balance/{pubkey}` | Get account state folded by State Reducer |
 | `GET` | `/api/v1/accounts` | Get all member account balances across the cooperative |
 | `GET` | `/api/v1/audit/verify` | Verify cryptographic chain integrity and Merkle tree root |
-| `POST` | `/api/v1/sms/webhook` | Ingest parsed mobile money receipts with idempotency check |
 
-### Example: Check Community Stats
-```bash
-curl -s http://localhost:8000/api/v1/stats | jq .
-```
-Response:
-```json
-{
-  "total_balance": 150.0,
-  "total_members": 2,
-  "total_events": 2,
-  "merkle_root": "7a3f8901c0824ba1e8912cb901428ba901248ba0912481092a481b9012481234",
-  "is_chain_valid": true
-}
-```
+### VSLA Microfinance Domain Endpoints
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/loans/disburse` | Disburse micro-loan with dual signatures (Teller + Borrower) |
+| `POST` | `/api/v1/loans/repay` | Record loan repayment reducing member's outstanding debt |
+| `POST` | `/api/v1/welfare/contribute` | Member contribution to social emergency safety net fund |
+| `POST` | `/api/v1/welfare/payout` | Disburse emergency relief grant from social fund |
+| `GET` | `/api/v1/welfare/stats` | Get community emergency safety net pool balance |
 
-### Example: Verify Cryptographic Chain Integrity
+### Production Telecom & Mobile Money Gateways (Ready for Credentials)
+| Method | Endpoint | Integration | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/integrations/status` | All | Reports configured status of M-Pesa, MTN MoMo, Africa's Talking |
+| `POST` | `/api/v1/integrations/mpesa/stk-push` | Safaricom Daraja | Triggers Lipa Na M-Pesa Online USSD prompt on member mobile phone |
+| `POST` | `/api/v1/integrations/mpesa/stk-callback` | Safaricom Daraja | STK confirmation webhook auto-depositing with idempotency |
+| `POST` | `/api/v1/integrations/mpesa/c2b-validation` | Safaricom Daraja | C2B Paybill validation hook |
+| `POST` | `/api/v1/integrations/mpesa/c2b-confirmation` | Safaricom Daraja | C2B payment confirmation hook auto-depositing to ledger |
+| `POST` | `/api/v1/integrations/mtn/request-to-pay` | MTN MoMo | Triggers Collections RequestToPay USSD prompt |
+| `POST` | `/api/v1/integrations/mtn/callback` | MTN MoMo | Collections webhook auto-depositing upon status=SUCCESSFUL |
+| `POST` | `/api/v1/integrations/africas-talking/inbound` | Africa's Talking | Parses inbound telecom SMS receipts and auto-deposits |
+| `POST` | `/api/v1/sms/webhook` | Android SMS Bridge | Ingests receipts intercepted by Android gateway app |
+
+---
+
+## 🔑 Production Telecom Credentials Configuration
+
+To connect live mobile money networks, populate the following variables in `.env`:
 ```bash
-curl -s http://localhost:8000/api/v1/audit/verify | jq .
+# Safaricom Daraja M-Pesa (Kenya / East Africa)
+MPESA_ENVIRONMENT=sandbox                        # or "production"
+MPESA_CONSUMER_KEY=your_daraja_consumer_key
+MPESA_CONSUMER_SECRET=your_daraja_consumer_secret
+MPESA_PASSKEY=your_daraja_passkey
+MPESA_SHORTCODE=174379
+
+# MTN Mobile Money Open API (Uganda, Ghana, Rwanda, Nigeria)
+MTN_MOMO_ENVIRONMENT=sandbox                     # or "live"
+MTN_MOMO_SUBSCRIPTION_KEY=your_subscription_key
+MTN_MOMO_API_USER=your_uuid_api_user
+MTN_MOMO_API_KEY=your_api_key
+
+# Africa's Talking Cloud SMS (Sub-Saharan Africa)
+AFRICASTALKING_USERNAME=sandbox                  # or your username
+AFRICASTALKING_API_KEY=your_api_key
+AFRICASTALKING_SENDER_ID=NANOCOOP
 ```
-Response:
-```json
-{
-  "is_valid": true,
-  "total_events": 2,
-  "merkle_root": "7a3f8901c0824ba1e8912cb901428ba901248ba0912481092a481b9012481234",
-  "last_hash": "0284ac91e84a9218bc894019283ba874b01984218ba901248ba0912481112233",
-  "tamper_details": null
-}
-```
+*Note: If credentials are not supplied, NanoCoop runs in full simulated sandbox mode so all features can be tested end-to-end immediately.*
 
 ---
 
@@ -325,9 +345,9 @@ Response:
 
 | Package | Test Framework | Test Types | Coverage |
 | :--- | :--- | :--- | :--- |
-| **nanocoop-core** | `pytest` + `pytest-cov` + `uv` | PKI crypto, Tamper detection, Idempotency race-conditions, 3-tier E2E | **93.1%** |
+| **nanocoop-core** | `pytest` + `pytest-cov` + `uv` | PKI crypto, Tamper detection, Idempotency race-conditions, VSLA domain, Telecom integrations | **100%** |
 | **nanocoop-sms-bridge**| `jest` + `ts-jest` | Telecom regex parsers, Store-and-forward queue, Exponential backoff | **100%** |
-| **nanocoop-teller** | `jest` + `jest-expo` | Deterministic serialization, Ed25519 signing, Offline Zustand queue | **100%** |
+| **nanocoop-teller** | `jest` + `jest-expo` | Deterministic serialization, Ed25519 signing, Offline Zustand queue, VSLA loans | **100%** |
 
 ---
 

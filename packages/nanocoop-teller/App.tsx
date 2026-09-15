@@ -4,6 +4,8 @@ import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-na
 import { Header } from './src/components/Header';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { TransactionScreen } from './src/screens/TransactionScreen';
+import { VslaScreen } from './src/screens/VslaScreen';
+import { IntegrationsScreen } from './src/screens/IntegrationsScreen';
 import { AuditScreen } from './src/screens/AuditScreen';
 import { useLedgerStore } from './src/store/useLedgerStore';
 
@@ -23,6 +25,8 @@ export default function App() {
       <View style={styles.body}>
         {activeTab === 'dashboard' && <DashboardScreen />}
         {activeTab === 'transaction' && <TransactionScreen />}
+        {activeTab === 'vsla' && <VslaScreen />}
+        {activeTab === 'integrations' && <IntegrationsScreen />}
         {activeTab === 'audit' && <AuditScreen />}
       </View>
 
@@ -37,7 +41,7 @@ export default function App() {
           <Text
             style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}
           >
-            Dashboard
+            Vault
           </Text>
         </TouchableOpacity>
 
@@ -51,6 +55,32 @@ export default function App() {
             style={[styles.tabLabel, activeTab === 'transaction' && styles.tabLabelActive]}
           >
             Transact
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'vsla' && styles.tabItemActive]}
+          onPress={() => setActiveTab('vsla')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.tabIcon}>🤝</Text>
+          <Text
+            style={[styles.tabLabel, activeTab === 'vsla' && styles.tabLabelActive]}
+          >
+            VSLA Loans
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'integrations' && styles.tabItemActive]}
+          onPress={() => setActiveTab('integrations')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.tabIcon}>📱</Text>
+          <Text
+            style={[styles.tabLabel, activeTab === 'integrations' && styles.tabLabelActive]}
+          >
+            Telecom
           </Text>
         </TouchableOpacity>
 
@@ -91,6 +121,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.6,
   },
   tabItemActive: {
     opacity: 1,
@@ -100,11 +131,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   tabLabelActive: {
-    color: '#10B981',
+    color: '#38BDF8',
+    fontWeight: '700',
   },
 });
