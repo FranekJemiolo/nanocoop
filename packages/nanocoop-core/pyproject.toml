@@ -1,0 +1,41 @@
+[project]
+name = "nanocoop-core"
+version = "0.1.0"
+description = "NanoCoop Event-Sourced Cryptographic Core Banking Ledger"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "aiosqlite>=0.20.0",
+    "pydantic>=2.6.0",
+    "pynacl>=1.5.0",
+    "cryptography>=42.0.0",
+    "python-dotenv>=1.0.1",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.2.0",
+    "flake8>=7.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
