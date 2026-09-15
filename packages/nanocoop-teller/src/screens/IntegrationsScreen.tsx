@@ -14,12 +14,14 @@ export const IntegrationsScreen: React.FC = () => {
   const {
     simulateDarajaStk,
     simulateMtnMoMo,
+    simulateAirtelMoney,
+    simulateOrangeMoney,
+    simulateWave,
     simulateAfricasTalkingSms,
   } = useLedgerStore();
 
   const [phone, setPhone] = useState('254712345678');
   const [amount, setAmount] = useState('50.00');
-  const [activeGateway, setActiveGateway] = useState<'daraja' | 'momo' | 'at'>('daraja');
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -48,6 +50,57 @@ export const IntegrationsScreen: React.FC = () => {
         currency: 'UGX',
       });
       setNotification(`✓ MTN MoMo RequestToPay payment confirmed for ${phone}!`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTestAirtel = async () => {
+    setIsProcessing(true);
+    try {
+      await simulateAirtelMoney({
+        phoneNumber: phone,
+        amount: parseFloat(amount) || 50.0,
+        currency: 'KES',
+      });
+      setNotification(`✓ Airtel Money USSD prompt confirmed: $${amount} deposited to Ledger!`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTestOrange = async () => {
+    setIsProcessing(true);
+    try {
+      await simulateOrangeMoney({
+        phoneNumber: phone,
+        amount: parseFloat(amount) || 50.0,
+        currency: 'XOF',
+      });
+      setNotification(`✓ Orange Money Web Payment confirmed: $${amount} deposited to Ledger!`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTestWave = async () => {
+    setIsProcessing(true);
+    try {
+      await simulateWave({
+        phoneNumber: phone,
+        amount: parseFloat(amount) || 50.0,
+        currency: 'XOF',
+      });
+      setNotification(`✓ Wave Mobile Money checkout confirmed: $${amount} deposited to Ledger!`);
       setTimeout(() => setNotification(null), 5000);
     } catch (e: any) {
       Alert.alert('Error', e.message);
@@ -92,7 +145,7 @@ export const IntegrationsScreen: React.FC = () => {
           <Text style={styles.cardIcon}>🟢</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Safaricom Daraja M-Pesa</Text>
-            <Text style={styles.cardStatus}>STK Push & C2B Paybill Connector • Ready for Credentials</Text>
+            <Text style={styles.cardStatus}>STK Push & C2B Paybill Connector • Kenya & East Africa</Text>
           </View>
         </View>
         <Text style={styles.cardDesc}>
@@ -118,6 +171,57 @@ export const IntegrationsScreen: React.FC = () => {
         <View style={styles.configBadges}>
           <Text style={styles.badge}>PRODUCT: COLLECTIONS</Text>
           <Text style={styles.badge}>X-REFERENCE-ID: UUID v4</Text>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>🔴</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Airtel Money Africa</Text>
+            <Text style={styles.cardStatus}>USSD Push & Merchant API • 14 African Countries</Text>
+          </View>
+        </View>
+        <Text style={styles.cardDesc}>
+          Direct merchant collection push prompt on Airtel subscribers with instant settlement.
+        </Text>
+        <View style={styles.configBadges}>
+          <Text style={styles.badge}>PRODUCT: MERCHANTPAY</Text>
+          <Text style={styles.badge}>ENV: STAGING/PROD</Text>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>🟠</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Orange Money Africa</Text>
+            <Text style={styles.cardStatus}>Web Payment & USSD • Francophone Africa</Text>
+          </View>
+        </View>
+        <Text style={styles.cardDesc}>
+          Secure Web Payment session generation and instant callback notification processing.
+        </Text>
+        <View style={styles.configBadges}>
+          <Text style={styles.badge}>API: OM-WEBPAY</Text>
+          <Text style={styles.badge}>CURRENCY: XOF/XAF</Text>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>🌊</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Wave Mobile Money</Text>
+            <Text style={styles.cardStatus}>Instant QR & Mobile Checkout • West Africa</Text>
+          </View>
+        </View>
+        <Text style={styles.cardDesc}>
+          Fast Wave checkout sessions with cryptographically verified HMAC-SHA256 webhooks.
+        </Text>
+        <View style={styles.configBadges}>
+          <Text style={styles.badge}>AUTH: HMAC-SHA256</Text>
+          <Text style={styles.badge}>ENV: LIVE/SANDBOX</Text>
         </View>
       </View>
 
@@ -175,6 +279,30 @@ export const IntegrationsScreen: React.FC = () => {
             disabled={isProcessing}
           >
             <Text style={styles.simButtonText}>Simulate MTN MoMo Payment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.simButton, { backgroundColor: '#DC2626', marginTop: 8 }]}
+            onPress={handleTestAirtel}
+            disabled={isProcessing}
+          >
+            <Text style={styles.simButtonText}>Simulate Airtel Money USSD Push</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.simButton, { backgroundColor: '#EA580C', marginTop: 8 }]}
+            onPress={handleTestOrange}
+            disabled={isProcessing}
+          >
+            <Text style={styles.simButtonText}>Simulate Orange Money Payment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.simButton, { backgroundColor: '#0284C7', marginTop: 8 }]}
+            onPress={handleTestWave}
+            disabled={isProcessing}
+          >
+            <Text style={styles.simButtonText}>Simulate Wave Mobile Money</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

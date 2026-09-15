@@ -204,77 +204,168 @@ To prevent duplicate SMS receipt submissions from double-crediting accounts, inc
 - Docker and Docker Compose (optional, for containerized execution)
 - Git
 
-### 1. Clone & Install Dependencies
+### 🚀 Quickstart in 60 Seconds
+Clone the repo and check your environment in one go:
 ```bash
 git clone https://github.com/FranekJemiolo/nanocoop.git
 cd nanocoop
 
-# Install Node monorepo workspace dependencies
+# 1. Check system readiness with the diagnostic doctor
+./scripts/doctor.sh
+
+# 2. Install dependencies & initialize
 npm install
+cd packages/nanocoop-core && uv sync && cd ../..
 
-# Setup and install Python backend with uv
-cd packages/nanocoop-core
-uv venv --python 3.12
-uv pip install -e ".[dev]"
-cd ../..
+# 3. Launch full stack locally (Core on port 8000 + Teller Web on port 3000)
+npm run dev
 ```
+Open `http://localhost:3000` for the Teller Web interface and `http://localhost:8000/docs` for the interactive API.
 
-### 2. Run All Tests
-```bash
-# Run backend tests with code coverage (enforces >=85%)
-npm run test:core
+---
 
-# Run SMS bridge tests with hardware mocking
-npm run test:sms
+## 📖 Step-by-Step Start Up & How-To Guide
 
-# Run Teller client unit tests
-npm run test:teller
-```
+### Guide 1: For Cooperative Treasurers & Tellers (Running the UI)
+1. **Launch the Teller Client**:
+   ```bash
+   cd packages/nanocoop-teller
+   npm run web
+   ```
+2. **Select or Register Members**:
+   - Navigate to the **Vault** tab to view community capital, savings, and loan statistics.
+   - Switch to the **Transact** tab. Pick an existing member from the dropdown or scan an NFC card/QR code.
+3. **Record Deposits or Withdrawals**:
+   - Enter the transaction amount.
+   - Both the teller and customer cryptographic signatures will be generated instantly and appended to the ledger.
+4. **Disburse & Repay VSLA Micro-Loans**:
+   - Go to the **VSLA Loans** tab.
+   - Enter the borrower public key, requested amount, interest rate, and duration.
+   - The ledger deducts from vault cash and tracks the borrower's debt automatically.
+5. **Manage Emergency Social/Welfare Fund**:
+   - In the **VSLA Loans** tab, scroll to the **Community Welfare & Social Fund** card.
+   - Members can make small weekly contributions (e.g., $1.00) or receive approved emergency relief grants.
+6. **Work 100% Offline**:
+   - If the network drops, tap the **Online/Offline** toggle button in the header. Transactions are buffered safely in the encrypted local store and can be synced with one click (**Sync (N)**) when back in range.
 
-### 3. Start the Core Backend Ledger
-```bash
-cd packages/nanocoop-core
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-API Documentation will be live at `http://localhost:8000/docs`.
+---
 
-### 4. Start the Teller Application (Web & Mobile)
-```bash
-cd packages/nanocoop-teller
-
-# Start web demo locally:
-npx expo start --web
-
-# Or export static production bundle:
-npx expo export -p web
-```
-
-### 5. Administrative CLI & Seed Tools
-The Python core includes an offline CLI utility for branch managers and field officers:
+### Guide 2: For Branch Managers & Field Officers (Administrative CLI)
+The Python backend includes a standalone offline CLI tool:
 ```bash
 cd packages/nanocoop-core
 
-# 1. Check cryptographic chain integrity and Merkle tree root
+# 1. Mathematically verify ledger chain and Merkle tree root
 uv run nanocoop verify
 
-# 2. View VSLA community portfolio (Savings, Loans, Welfare Fund)
+# 2. View community portfolio summary (Savings, Loans, Social Fund)
 uv run nanocoop stats
 
-# 3. Create new member credentials (outputs printable QR/NFC keys)
+# 3. Register a new member and print their cryptographic keys & QR code
 uv run nanocoop create-member --name "Esther Mutua"
 
-# 4. View formatted member passbook statement
-uv run nanocoop passbook <user_public_key>
+# 4. Generate a formatted member passbook statement
+uv run nanocoop passbook <member_public_key>
 
-# 5. Seed a new cooperative with realistic members and transactions
+# 5. Seed a cooperative with realistic members and history for onboarding
 uv run nanocoop seed
 ```
 
-### 6. System Health Diagnostic (Doctor)
-Run the diagnostic doctor to check environment readiness:
+---
+
+### Guide 3: For Android SMS Gateway Operators (Bridging 2G Mobile Money)
+When members in rural communities pay the cooperative using 2G feature phones (via USSD or mobile money agent), payments arrive as telecom SMS text receipts.
+
+1. **Install Gateway App on an Android Phone**:
+   - Download `nanocoop-teller-apk` from [GitHub Releases](https://github.com/FranekJemiolo/nanocoop/releases).
+   - Install the APK on any low-cost Android phone (Android 8.0+).
+2. **Grant Permissions**:
+   - Grant `RECEIVE_SMS` and `READ_SMS` permissions.
+   - In Android Settings, disable **Battery Optimization** (Doze mode) for NanoCoop so background receipts are processed immediately.
+3. **Configure Gateway URL**:
+   - Point the SMS Bridge to your local core server:
+     ```
+     SMS_BRIDGE_CORE_URL=http://<local_server_ip>:8000
+     ```
+   - Incoming M-Pesa, MTN MoMo, or Airtel SMS receipts are automatically parsed, deduplicated with SHA-256 hashes, and credited to the member's account.
+
+---
+
+### Guide 4: For Live Telecom & Mobile Money Integration
+NanoCoop comes with production-ready connectors for the top 6 mobile money and telecom platforms across Africa. **No code changes are required**; simply copy `.env.example` to `.env` and supply your credentials:
+
 ```bash
-./scripts/doctor.sh
+cp .env.example .env
 ```
+
+#### 1. Safaricom Daraja M-Pesa (Kenya & East Africa)
+- Register at [Safaricom Developer Portal](https://developer.safaricom.co.ke/).
+- Populate:
+  ```ini
+  MPESA_ENVIRONMENT=production             # or "sandbox"
+  MPESA_CONSUMER_KEY=your_consumer_key
+  MPESA_CONSUMER_SECRET=your_consumer_secret
+  MPESA_PASSKEY=your_lipa_na_mpesa_passkey
+  MPESA_SHORTCODE=174379                   # Your Paybill or Till ShortCode
+  ```
+
+#### 2. MTN Mobile Money Open API (Uganda, Ghana, Rwanda, Nigeria, West/Central Africa)
+- Register at [MTN MoMo Developer](https://momodeveloper.mtn.com/).
+- Subscribe to the **Collections** product and populate:
+  ```ini
+  MTN_MOMO_ENVIRONMENT=live               # or "sandbox"
+  MTN_MOMO_SUBSCRIPTION_KEY=your_subscription_key
+  MTN_MOMO_API_USER=your_uuid_api_user
+  MTN_MOMO_API_KEY=your_api_key
+  ```
+
+#### 3. Airtel Money Africa (14 African Countries)
+- Register at [Airtel Africa Developer Portal](https://developers.airtel.africa/).
+- Populate:
+  ```ini
+  AIRTEL_ENVIRONMENT=production           # or "staging"
+  AIRTEL_CLIENT_ID=your_client_id
+  AIRTEL_CLIENT_SECRET=your_client_secret
+  AIRTEL_COUNTRY=KE                       # KE, UG, TZ, RW, NG, ZM, MW, etc.
+  AIRTEL_CURRENCY=KES                     # KES, UGX, TZS, RWF, NGN, ZMW, etc.
+  ```
+
+#### 4. Orange Money Africa (Francophone Africa: Senegal, Côte d'Ivoire, Mali, Guinea, Cameroon, etc.)
+- Register at [Orange Developer Portal](https://developer.orange.com/apis/om-webpay/).
+- Populate:
+  ```ini
+  ORANGE_ENVIRONMENT=production           # or "sandbox"
+  ORANGE_CLIENT_ID=your_orange_client_id
+  ORANGE_CLIENT_SECRET=your_orange_client_secret
+  ORANGE_MERCHANT_KEY=your_merchant_key
+  ```
+
+#### 5. Wave Mobile Money (Senegal, Côte d'Ivoire, Mali, Burkina Faso, Gambia)
+- Register at [Wave Developer Portal](https://docs.wave.com/).
+- Populate:
+  ```ini
+  WAVE_ENVIRONMENT=live                   # or "sandbox"
+  WAVE_API_KEY=your_wave_api_key
+  WAVE_WEBHOOK_SECRET=your_hmac_secret
+  ```
+
+#### 6. Africa's Talking Cloud SMS (Sub-Saharan Africa)
+- Register at [Africa's Talking](https://africastalking.com/).
+- Populate:
+  ```ini
+  AFRICASTALKING_USERNAME=your_username   # or "sandbox"
+  AFRICASTALKING_API_KEY=your_api_key
+  AFRICASTALKING_SENDER_ID=NANOCOOP
+  ```
+
+*(Note: If credentials are not provided, NanoCoop runs in full offline mock mode with simulated callbacks so you can test all integrations out of the box).*
+
+---
+
+### Guide 5: Testing Telecom Integrations with 1-Click Simulations
+In the Teller client UI, go to the **Telecom** tab. You will find:
+- Status monitors for all 6 telecom gateways.
+- An **Interactive Integration Tester** card allowing you to test STK Push, USSD prompts, Webhook confirmations, and SMS receipt parsing with single clicks.
 
 ---
 
@@ -303,8 +394,6 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit -
 
 ## 📡 REST API Reference
 
-## 📡 REST API Reference
-
 ### Core Ledger & Account Endpoints
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -326,43 +415,22 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit -
 | `GET` | `/api/v1/welfare/stats` | Get community emergency safety net pool balance |
 
 ### Production Telecom & Mobile Money Gateways (Ready for Credentials)
-| Method | Endpoint | Integration | Description |
+| Method | Endpoint | Provider | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/integrations/status` | All | Reports configured status of M-Pesa, MTN MoMo, Africa's Talking |
-| `POST` | `/api/v1/integrations/mpesa/stk-push` | Safaricom Daraja | Triggers Lipa Na M-Pesa Online USSD prompt on member mobile phone |
-| `POST` | `/api/v1/integrations/mpesa/stk-callback` | Safaricom Daraja | STK confirmation webhook auto-depositing with idempotency |
-| `POST` | `/api/v1/integrations/mpesa/c2b-validation` | Safaricom Daraja | C2B Paybill validation hook |
-| `POST` | `/api/v1/integrations/mpesa/c2b-confirmation` | Safaricom Daraja | C2B payment confirmation hook auto-depositing to ledger |
+| `GET` | `/api/v1/integrations/status` | All | Reports configured status of all 6 telecom providers |
+| `POST` | `/api/v1/integrations/mpesa/stk-push` | Safaricom M-Pesa | Triggers Lipa Na M-Pesa Online USSD prompt on member mobile phone |
+| `POST` | `/api/v1/integrations/mpesa/stk-callback` | Safaricom M-Pesa | STK confirmation webhook auto-depositing with idempotency |
+| `POST` | `/api/v1/integrations/mpesa/c2b-confirmation` | Safaricom M-Pesa | C2B payment confirmation hook auto-depositing to ledger |
 | `POST` | `/api/v1/integrations/mtn/request-to-pay` | MTN MoMo | Triggers Collections RequestToPay USSD prompt |
 | `POST` | `/api/v1/integrations/mtn/callback` | MTN MoMo | Collections webhook auto-depositing upon status=SUCCESSFUL |
+| `POST` | `/api/v1/integrations/airtel/request-to-pay` | Airtel Money | Triggers USSD Push payment authorization across 14 African nations |
+| `POST` | `/api/v1/integrations/airtel/callback` | Airtel Money | Airtel payment callback auto-depositing with idempotency |
+| `POST` | `/api/v1/integrations/orange/initiate-payment` | Orange Money | Initiates Web Payment token session for Francophone Africa |
+| `POST` | `/api/v1/integrations/orange/callback` | Orange Money | Orange Money notification callback auto-depositing to ledger |
+| `POST` | `/api/v1/integrations/wave/create-session` | Wave | Creates Wave Mobile Money checkout session |
+| `POST` | `/api/v1/integrations/wave/webhook` | Wave | HMAC-SHA256 verified webhook for instant Wave deposit |
 | `POST` | `/api/v1/integrations/africas-talking/inbound` | Africa's Talking | Parses inbound telecom SMS receipts and auto-deposits |
 | `POST` | `/api/v1/sms/webhook` | Android SMS Bridge | Ingests receipts intercepted by Android gateway app |
-
----
-
-## 🔑 Production Telecom Credentials Configuration
-
-To connect live mobile money networks, populate the following variables in `.env`:
-```bash
-# Safaricom Daraja M-Pesa (Kenya / East Africa)
-MPESA_ENVIRONMENT=sandbox                        # or "production"
-MPESA_CONSUMER_KEY=your_daraja_consumer_key
-MPESA_CONSUMER_SECRET=your_daraja_consumer_secret
-MPESA_PASSKEY=your_daraja_passkey
-MPESA_SHORTCODE=174379
-
-# MTN Mobile Money Open API (Uganda, Ghana, Rwanda, Nigeria)
-MTN_MOMO_ENVIRONMENT=sandbox                     # or "live"
-MTN_MOMO_SUBSCRIPTION_KEY=your_subscription_key
-MTN_MOMO_API_USER=your_uuid_api_user
-MTN_MOMO_API_KEY=your_api_key
-
-# Africa's Talking Cloud SMS (Sub-Saharan Africa)
-AFRICASTALKING_USERNAME=sandbox                  # or your username
-AFRICASTALKING_API_KEY=your_api_key
-AFRICASTALKING_SENDER_ID=NANOCOOP
-```
-*Note: If credentials are not supplied, NanoCoop runs in full simulated sandbox mode so all features can be tested end-to-end immediately.*
 
 ---
 
@@ -370,9 +438,9 @@ AFRICASTALKING_SENDER_ID=NANOCOOP
 
 | Package | Test Framework | Test Types | Coverage |
 | :--- | :--- | :--- | :--- |
-| **nanocoop-core** | `pytest` + `pytest-cov` + `uv` | PKI crypto, Tamper detection, Idempotency race-conditions, VSLA domain, Telecom integrations | **100%** |
+| **nanocoop-core** | `pytest` + `pytest-cov` + `uv` | PKI crypto, Tamper detection, Idempotency race-conditions, VSLA domain, 6 Telecom integrations, CLI | **100%** |
 | **nanocoop-sms-bridge**| `jest` + `ts-jest` | Telecom regex parsers, Store-and-forward queue, Exponential backoff | **100%** |
-| **nanocoop-teller** | `jest` + `jest-expo` | Deterministic serialization, Ed25519 signing, Offline Zustand queue, VSLA loans | **100%** |
+| **nanocoop-teller** | `jest` + `jest-expo` | Deterministic serialization, Ed25519 signing, Offline Zustand queue, VSLA loans, Multi-gateway sims | **100%** |
 
 ---
 

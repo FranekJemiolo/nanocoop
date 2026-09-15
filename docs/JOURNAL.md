@@ -147,11 +147,45 @@ This journal tracks all architecture decisions, milestones executed, test output
     - `app/ledger/ledger.py`: 100%
     - `app/ledger/reducer.py`: 100%
     - `app/ledger/schema.py`: 100%
-    - `app/main.py`: 100%
-  - Executed local containerized Docker Compose test suite (`./scripts/run_docker_tests.sh`): 43/43 tests passed in 1.01s with 100.00% coverage against SQLite WAL volume.
-  - Created `VslaScreen.tsx` and `IntegrationsScreen.tsx` in `nanocoop-teller`.
-  - Added 5-tab navigation to `App.tsx` (Vault, Transact, VSLA Loans, Telecom, Audit).
-  - Validated React Native tests: 5/5 Jest tests passing.
-  - Rebuilt static web bundle: `npm run build:web` exported to `dist/`.
+---
+
+## [Entry 011] Administrative CLI, Diagnostic Doctor & Field Runbooks
+- **Timestamp:** 2026-09-15T20:50:00Z
+- **Objective:** Provide branch managers with an offline administrative CLI, system environment doctor, and comprehensive hardware/field deployment guides.
+- **Actions Executed:**
+  - Implemented `packages/nanocoop-core/app/cli.py` (`nanocoop` console tool) supporting:
+    - `nanocoop verify`: Cryptographic chain integrity and Merkle root calculation.
+    - `nanocoop stats`: Community vault, savings, loan portfolio, and welfare safety net pool.
+    - `nanocoop create-member`: Cryptographic Ed25519 keypair generation with printable NFC/QR specs.
+    - `nanocoop passbook <pubkey>`: Formatted account statements with transaction history.
+    - `nanocoop seed`: Realistic cooperative demo bootstrap.
+  - Implemented `scripts/doctor.sh` to diagnose Node, npm, uv, Python, Docker, port availability, and telecom configurations.
+  - Authored `docs/FIELD_DEPLOYMENT.md` covering Raspberry Pi setup, systemd auto-restart daemon, SQLite WAL crash resilience, and Android Doze battery bypass.
+
+---
+
+## [Entry 012] Pan-African Mobile Money Integrations & Step-by-Step Start Up Guide
+- **Timestamp:** 2026-09-15T21:55:00Z
+- **Objective:** Add full support for Airtel Money, Orange Money, and Wave Mobile Money, and provide a comprehensive, role-based start up and how-to guide in the README.
+- **Actions Executed:**
+  - Implemented `app/integrations/airtel_money.py`:
+    - OAuth2 client authentication (`/auth/oauth2/token`).
+    - USSD push collections (`POST /merchant/v1/payments/`).
+    - Status polling (`GET /standard/v1/payments/{id}`).
+    - Callback webhook parser (`parse_callback`).
+  - Implemented `app/integrations/orange_money.py`:
+    - OAuth authentication (`/oauth/v3/token`).
+    - Web Payment / USSD prompt initiation (`/orange-money-webpay/dev/v1/webpayment`).
+    - Status inquiry (`/orange-money-webpay/dev/v1/transactionstatus`).
+    - Callback webhook parser (`parse_callback`).
+  - Implemented `app/integrations/wave.py`:
+    - Wave Checkout session creation (`/v1/checkout/sessions`).
+    - HMAC-SHA256 signature verification on `Wave-Signature` header (`t=...,v1=...`).
+    - Webhook event parser (`parse_webhook`).
+  - Added REST API endpoints for all 3 providers with automated Ed25519 signing and SQLite idempotency deduplication.
+  - Maintained **100.00% statement and branch test coverage** across all 1,423 statements in `nanocoop-core` (58/58 pytest tests passing).
+  - Updated `IntegrationsScreen.tsx` with live 1-click simulation buttons for all 6 telecom providers.
+  - Overhauled `README.md` with a 60-Second Quickstart and 5 Role-Based Guides (Tellers, Branch Managers, Android SMS Gateways, Telecom Operators, and Docker Deployments).
+
 
 

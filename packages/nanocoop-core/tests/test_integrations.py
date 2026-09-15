@@ -1,10 +1,16 @@
-"""Unit tests for telecom and mobile money integrations (Daraja, MTN MoMo, Africa's Talking)."""
+"""Unit tests for telecom and mobile money integrations (Daraja, MTN MoMo, Airtel, Orange, Wave, Africa's Talking)."""
 
-import pytest
+import hashlib
+import hmac
+import time
 import httpx
+import pytest
+from app.integrations.africas_talking import AfricasTalkingClient
+from app.integrations.airtel_money import AirtelMoneyClient
 from app.integrations.daraja import DarajaClient
 from app.integrations.mtn_momo import MtnMoMoClient
-from app.integrations.africas_talking import AfricasTalkingClient
+from app.integrations.orange_money import OrangeMoneyClient
+from app.integrations.wave import WaveClient
 
 # --- Safaricom Daraja Tests ---
 
@@ -347,3 +353,265 @@ async def test_clients_without_injected_http_client(monkeypatch):
     at = AfricasTalkingClient(username="usr", api_key="k")
     r4 = await at.send_sms("254712345678", "Hello")
     assert "SMSMessageData" in r4
+
+    # Test Airtel Money
+    airtel = AirtelMoneyClient(client_id="id", client_secret="sec")
+    t3 = await airtel.get_access_token()
+    assert t3 == "token_without_client"
+    r5 = await airtel.request_to_pay("0712345678", 20.0, "REF")
+    assert r5["ResponseCode"] == "0"
+    r6 = await airtel.get_payment_status("tx-1")
+    assert r6["status"] == "SUCCESSFUL"
+
+    # Test Orange Money
+    orange = OrangeMoneyClient(client_id="id", client_secret="sec", merchant_key="mk")
+    t4 = await orange.get_access_token()
+    assert t4 == "token_without_client"
+    r7 = await orange.initiate_payment("order-1", 500.0)
+    assert r7["ResponseCode"] == "0"
+    r8 = await orange.get_transaction_status("order-1", 500.0, "paytok")
+    assert r8["ResponseCode"] == "0"
+
+    # Test Wave
+    wave = WaveClient(api_key="wave_key")
+    r9 = await wave.create_checkout_session(1000.0)
+    assert r9["ResponseCode"] == "0"
+
+
+# --- Airtel Money Tests ---
+
+
+async def test_airtel_unconfigured_mocks():
+    client = AirtelMoneyClient(client_id="", client_secret="", environment="staging")
+    assert not client.is_configured
+    assert client.base_url == "https://openapiuat.airtel.africa"
+
+    token = await client.get_access_token()
+    assert "mock" in token
+
+    r1 = await client.request_to_pay("0712345678", 150.0, "SAVINGS-01")
+    assert r1["simulated"] is True
+    assert r1["status"]["code"] == "200"
+
+    r2 = await client.get_payment_status("tx-123")
+    assert r2["simulated"] is True
+    assert r2["data"]["transaction"]["status"] == "TS"
+
+
+async def test_airtel_configured_with_mocked_http():
+    mock_transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "access_token": "airtel_live_token",
+                "data": {"transaction": {"id": "TX_AIRTEL_99", "status": "TIP"}},
+                "status": {"code": "200", "success": True},
+            },
+        )
+    )
+    async with httpx.AsyncClient(transport=mock_transport) as http_client:
+        client = AirtelMoneyClient(
+            client_id="cid",
+            client_secret="csec",
+            country="KE",
+            currency="KES",
+            environment="production",
+        )
+        assert client.is_configured
+        assert client.base_url == "https://openapi.airtel.africa"
+
+        token = await client.get_access_token(client=http_client)
+        assert token == "airtel_live_token"
+
+        r1 = await client.request_to_pay("+254712345678", 200.0, "VSLA", client=http_client)
+        assert r1["status"]["success"] is True
+
+        r2 = await client.get_payment_status("TX_AIRTEL_99", client=http_client)
+        assert r2["status"]["success"] is True
+
+
+def test_airtel_parse_callback():
+    payload_success = {
+        "transaction": {
+            "id": "AIRTEL-TX-001",
+            "amount": "350.00",
+            "currency": "KES",
+            "status": "TS",
+            "message": "Paid",
+        },
+        "subscriber": {"msisdn": "254712345678"},
+    }
+    parsed = AirtelMoneyClient.parse_callback(payload_success)
+    assert parsed["is_successful"] is True
+    assert parsed["transaction_id"] == "AIRTEL-TX-001"
+    assert parsed["amount"] == 350.0
+    assert parsed["subscriber_phone"] == "254712345678"
+
+    payload_fail = {
+        "transaction": {"id": "AIRTEL-TX-002", "amount": 100, "status": "TF"},
+        "subscriber": {"msisdn": "254712000000"},
+    }
+    parsed_fail = AirtelMoneyClient.parse_callback(payload_fail)
+    assert parsed_fail["is_successful"] is False
+
+
+# --- Orange Money Tests ---
+
+
+async def test_orange_unconfigured_mocks():
+    client = OrangeMoneyClient(client_id="", client_secret="", merchant_key="")
+    assert not client.is_configured
+
+    token = await client.get_access_token()
+    assert "mock" in token
+
+    r1 = await client.initiate_payment("ORDER-1", 5000.0)
+    assert r1["simulated"] is True
+    assert r1["status"] == 201
+    assert "pay_token" in r1
+
+    r2 = await client.get_transaction_status("ORDER-1", 5000.0, "tok-1")
+    assert r2["simulated"] is True
+    assert r2["status"] == "SUCCESS"
+
+
+async def test_orange_configured_with_mocked_http():
+    mock_transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "access_token": "orange_live_token",
+                "status": 201,
+                "pay_token": "OM_LIVE_TOK",
+                "payment_url": "https://webpayment.orange.com/pay/OM_LIVE_TOK",
+            },
+        )
+    )
+    async with httpx.AsyncClient(transport=mock_transport) as http_client:
+        client = OrangeMoneyClient(
+            client_id="cid",
+            client_secret="csec",
+            merchant_key="mkey",
+            environment="production",
+        )
+        assert client.is_configured
+
+        token = await client.get_access_token(client=http_client)
+        assert token == "orange_live_token"
+
+        r1 = await client.initiate_payment("ORD-99", 2500.0, client=http_client)
+        assert r1["status"] == 201
+
+        r2 = await client.get_transaction_status(
+            "ORD-99", 2500.0, "OM_LIVE_TOK", client=http_client
+        )
+        assert r2["status"] == 201
+
+
+def test_orange_parse_callback():
+    payload_success = {
+        "status": "SUCCESS",
+        "txnid": "OM-TXN-12345",
+        "order_id": "ORD-123",
+        "amount": "4500",
+        "currency": "XOF",
+        "customer_id": "221770001122",
+    }
+    parsed = OrangeMoneyClient.parse_callback(payload_success)
+    assert parsed["is_successful"] is True
+    assert parsed["transaction_id"] == "OM-TXN-12345"
+    assert parsed["amount"] == 4500.0
+    assert parsed["customer_phone"] == "221770001122"
+
+    payload_fail = {"status": "FAILED", "order_id": "ORD-FAIL", "amount": 100}
+    parsed_fail = OrangeMoneyClient.parse_callback(payload_fail)
+    assert parsed_fail["is_successful"] is False
+
+
+# --- Wave Mobile Money Tests ---
+
+
+async def test_wave_unconfigured_mocks():
+    client = WaveClient(api_key="", webhook_secret="")
+    assert not client.is_configured
+
+    r1 = await client.create_checkout_session(2000.0)
+    assert r1["simulated"] is True
+    assert "wave_launch_url" in r1
+
+    # Permissive signature verification when unconfigured
+    assert client.verify_webhook_signature(b"{}", "") is True
+
+
+async def test_wave_configured_with_mocked_http():
+    mock_transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "id": "cos_wave_123",
+                "amount": "5000",
+                "currency": "XOF",
+                "wave_launch_url": "https://pay.wave.com/c/cos_wave_123",
+            },
+        )
+    )
+    async with httpx.AsyncClient(transport=mock_transport) as http_client:
+        client = WaveClient(api_key="wave_secret_key", webhook_secret="wh_secret")
+        assert client.is_configured
+
+        r1 = await client.create_checkout_session(
+            5000.0,
+            restrict_payer_mobile="+221770000000",
+            client=http_client,
+        )
+        assert r1["id"] == "cos_wave_123"
+
+
+def test_wave_verify_webhook_signature():
+    secret = "test_webhook_secret_key"
+    client = WaveClient(api_key="key", webhook_secret=secret)
+
+    now = int(time.time())
+    body = b'{"type": "checkout.session.completed"}'
+    signed_payload = f"{now}.".encode("utf-8") + body
+    valid_sig = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+
+    header = f"t={now},v1={valid_sig}"
+    assert client.verify_webhook_signature(body, header) is True
+
+    # Bad sig
+    bad_header = f"t={now},v1=invalid_signature_hex"
+    assert client.verify_webhook_signature(body, bad_header) is False
+
+    # Bad format
+    assert client.verify_webhook_signature(body, "invalid_format") is False
+    assert client.verify_webhook_signature(body, "t=invalid_ts,v1=sig") is False
+
+    # Expired timestamp (older than 300s)
+    old_ts = now - 600
+    old_payload = f"{old_ts}.".encode("utf-8") + body
+    old_sig = hmac.new(secret.encode("utf-8"), old_payload, hashlib.sha256).hexdigest()
+    assert client.verify_webhook_signature(body, f"t={old_ts},v1={old_sig}") is False
+
+
+def test_wave_parse_webhook():
+    payload_success = {
+        "type": "checkout.session.completed",
+        "data": {
+            "id": "cos_001",
+            "transaction_id": "WAVE_TX_999",
+            "amount": "1200",
+            "currency": "XOF",
+            "client_reference": "COOP-WAVE-01",
+            "customer": {"mobile": "+221770001122"},
+        },
+    }
+    parsed = WaveClient.parse_webhook(payload_success)
+    assert parsed["is_successful"] is True
+    assert parsed["transaction_id"] == "WAVE_TX_999"
+    assert parsed["amount"] == 1200.0
+    assert parsed["payer_mobile"] == "+221770001122"
+
+    payload_other = {"type": "checkout.session.cancelled", "data": {}}
+    parsed_other = WaveClient.parse_webhook(payload_other)
+    assert parsed_other["is_successful"] is False

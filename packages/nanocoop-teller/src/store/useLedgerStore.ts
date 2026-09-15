@@ -79,6 +79,9 @@ export interface LedgerStoreState {
   simulateIncomingSmsPayment: (amount: number, senderPhone: string) => Promise<EventModel>;
   simulateDarajaStk: (params: { phoneNumber: string; amount: number }) => Promise<EventModel>;
   simulateMtnMoMo: (params: { phoneNumber: string; amount: number; currency?: string }) => Promise<EventModel>;
+  simulateAirtelMoney: (params: { phoneNumber: string; amount: number; currency?: string }) => Promise<EventModel>;
+  simulateOrangeMoney: (params: { phoneNumber: string; amount: number; currency?: string }) => Promise<EventModel>;
+  simulateWave: (params: { phoneNumber: string; amount: number; currency?: string }) => Promise<EventModel>;
   simulateAfricasTalkingSms: (params: { fromPhone: string; text: string }) => Promise<EventModel>;
   flushPendingQueue: () => Promise<number>;
   runAuditCheck: () => Promise<AuditVerification>;
@@ -771,6 +774,18 @@ export const useLedgerStore = create<LedgerStoreState>((set, get) => ({
   },
 
   simulateMtnMoMo: async ({ phoneNumber, amount, currency = 'USD' }) => {
+    return get().simulateDarajaStk({ phoneNumber, amount });
+  },
+
+  simulateAirtelMoney: async ({ phoneNumber, amount, currency = 'USD' }) => {
+    return get().simulateDarajaStk({ phoneNumber, amount });
+  },
+
+  simulateOrangeMoney: async ({ phoneNumber, amount, currency = 'USD' }) => {
+    return get().simulateDarajaStk({ phoneNumber, amount });
+  },
+
+  simulateWave: async ({ phoneNumber, amount, currency = 'USD' }) => {
     return get().simulateDarajaStk({ phoneNumber, amount });
   },
 

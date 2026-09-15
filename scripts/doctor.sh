@@ -63,6 +63,12 @@ fi
 # Check .env
 if [ -f ".env" ]; then
     echo "✓ .env file present."
+    if grep -qE "^MPESA_CONSUMER_KEY=.+" .env 2>/dev/null; then echo "  ↳ Safaricom Daraja M-Pesa: configured"; fi
+    if grep -qE "^MTN_MOMO_SUBSCRIPTION_KEY=.+" .env 2>/dev/null; then echo "  ↳ MTN Mobile Money: configured"; fi
+    if grep -qE "^AIRTEL_CLIENT_ID=.+" .env 2>/dev/null; then echo "  ↳ Airtel Money: configured"; fi
+    if grep -qE "^ORANGE_CLIENT_ID=.+" .env 2>/dev/null; then echo "  ↳ Orange Money: configured"; fi
+    if grep -qE "^WAVE_API_KEY=.+" .env 2>/dev/null; then echo "  ↳ Wave Mobile Money: configured"; fi
+    if grep -qE "^AFRICASTALKING_API_KEY=.+" .env 2>/dev/null; then echo "  ↳ Africa's Talking SMS: configured"; fi
 else
     echo "ℹ .env file not found. Created from .env.example template."
     cp .env.example .env

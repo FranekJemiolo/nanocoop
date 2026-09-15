@@ -366,3 +366,157 @@ async def test_africas_talking_inbound_and_duplicate(async_client):
     )
     assert res_dup.status_code == 200
     assert res_dup.json()["status"] == "DROPPED"
+
+
+async def test_api_integrations_status_expanded(async_client):
+    res = await async_client.get("/api/v1/integrations/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "airtel_money" in data
+    assert "orange_money" in data
+    assert "wave" in data
+    assert "safaricom_daraja" in data
+    assert "mtn_momo" in data
+    assert "africas_talking" in data
+
+
+async def test_airtel_request_to_pay_and_callback(async_client):
+    # 1. Request to Pay
+    res_req = await async_client.post(
+        "/api/v1/integrations/airtel/request-to-pay",
+        params={"phone_number": "254712345678", "amount": 150.0, "reference": "AIRTEL-REF"},
+    )
+    assert res_req.status_code == 200
+    assert res_req.json()["status"]["success"] is True
+
+    # 2. Failed callback -> IGNORED
+    res_fail = await async_client.post(
+        "/api/v1/integrations/airtel/callback",
+        json={
+            "transaction": {"id": "AIRTEL_FAIL", "status": "TF", "amount": 100},
+            "subscriber": {"msisdn": "254712345678"},
+        },
+    )
+    assert res_fail.status_code == 200
+    assert res_fail.json()["status"] == "IGNORED"
+
+    # 3. Success callback -> SUCCESS
+    success_payload = {
+        "transaction": {"id": "AIRTEL_TX_888", "status": "TS", "amount": 150.0, "currency": "KES"},
+        "subscriber": {"msisdn": "254712345678"},
+    }
+    res_success = await async_client.post(
+        "/api/v1/integrations/airtel/callback", json=success_payload
+    )
+    assert res_success.status_code == 200
+    assert res_success.json()["status"] == "SUCCESS"
+    assert res_success.json()["amount"] == 150.0
+
+    # 4. Duplicate callback -> DROPPED
+    res_dup = await async_client.post("/api/v1/integrations/airtel/callback", json=success_payload)
+    assert res_dup.status_code == 200
+    assert res_dup.json()["status"] == "DROPPED"
+
+
+async def test_orange_initiate_payment_and_callback(async_client):
+    # 1. Initiate Web Payment
+    res_init = await async_client.post(
+        "/api/v1/integrations/orange/initiate-payment",
+        params={"order_id": "ORD-ORANGE-01", "amount": 2500.0, "currency": "XOF"},
+    )
+    assert res_init.status_code == 200
+    assert "pay_token" in res_init.json()
+
+    # 2. Failed callback -> IGNORED
+    res_fail = await async_client.post(
+        "/api/v1/integrations/orange/callback",
+        json={"status": "FAILED", "order_id": "ORD-ORANGE-FAIL", "amount": 100},
+    )
+    assert res_fail.status_code == 200
+    assert res_fail.json()["status"] == "IGNORED"
+
+    # 3. Success callback -> SUCCESS
+    success_payload = {
+        "status": "SUCCESS",
+        "txnid": "OM_TXN_555",
+        "order_id": "ORD-ORANGE-01",
+        "amount": 2500.0,
+        "currency": "XOF",
+        "customer_id": "221770001122",
+    }
+    res_success = await async_client.post(
+        "/api/v1/integrations/orange/callback", json=success_payload
+    )
+    assert res_success.status_code == 200
+    assert res_success.json()["status"] == "SUCCESS"
+    assert res_success.json()["amount"] == 2500.0
+
+    # 4. Duplicate callback -> DROPPED
+    res_dup = await async_client.post("/api/v1/integrations/orange/callback", json=success_payload)
+    assert res_dup.status_code == 200
+    assert res_dup.json()["status"] == "DROPPED"
+
+
+async def test_wave_create_session_and_webhook(async_client, monkeypatch):
+    from app.integrations.wave import wave_client
+
+    # 1. Create Checkout Session
+    res_init = await async_client.post(
+        "/api/v1/integrations/wave/create-session",
+        params={"amount": 3000.0, "currency": "XOF", "client_reference": "COOP-WAVE-01"},
+    )
+    assert res_init.status_code == 200
+    assert "wave_launch_url" in res_init.json()
+
+    # 2. Invalid signature -> 401
+    monkeypatch.setattr(wave_client, "verify_webhook_signature", lambda body, sig: False)
+    res_401 = await async_client.post(
+        "/api/v1/integrations/wave/webhook",
+        content=b'{"type": "checkout.session.completed"}',
+        headers={"Wave-Signature": "invalid"},
+    )
+    assert res_401.status_code == 401
+
+    # Restore permissive signature
+    monkeypatch.setattr(wave_client, "verify_webhook_signature", lambda body, sig: True)
+
+    # 3. Invalid JSON payload -> 400
+    res_400 = await async_client.post(
+        "/api/v1/integrations/wave/webhook",
+        content=b"not_json",
+        headers={"Wave-Signature": "valid"},
+    )
+    assert res_400.status_code == 400
+
+    # 4. Ignored event -> IGNORED
+    res_ignore = await async_client.post(
+        "/api/v1/integrations/wave/webhook",
+        content=b'{"type": "checkout.session.cancelled", "data": {}}',
+        headers={"Wave-Signature": "valid"},
+    )
+    assert res_ignore.status_code == 200
+    assert res_ignore.json()["status"] == "IGNORED"
+
+    # 5. Success event -> SUCCESS
+    success_body = (
+        b'{"type": "checkout.session.completed", "data": {"id": "cos_wave_999", '
+        b'"transaction_id": "WAVE_TX_999", "amount": 3000.0, "currency": "XOF", '
+        b'"client_reference": "COOP-WAVE-01", "customer": {"mobile": "+221770001122"}}}'
+    )
+    res_success = await async_client.post(
+        "/api/v1/integrations/wave/webhook",
+        content=success_body,
+        headers={"Wave-Signature": "valid"},
+    )
+    assert res_success.status_code == 200
+    assert res_success.json()["status"] == "SUCCESS"
+    assert res_success.json()["amount"] == 3000.0
+
+    # 6. Duplicate event -> DROPPED
+    res_dup = await async_client.post(
+        "/api/v1/integrations/wave/webhook",
+        content=success_body,
+        headers={"Wave-Signature": "valid"},
+    )
+    assert res_dup.status_code == 200
+    assert res_dup.json()["status"] == "DROPPED"

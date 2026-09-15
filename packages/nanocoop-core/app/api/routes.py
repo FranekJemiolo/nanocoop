@@ -5,7 +5,7 @@ import time
 import uuid
 from typing import Any
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.core.config import settings
 from app.core.crypto import (
@@ -17,8 +17,11 @@ from app.core.crypto import (
 )
 from app.db.database import get_db
 from app.integrations.africas_talking import africas_talking_client
+from app.integrations.airtel_money import airtel_client
 from app.integrations.daraja import daraja_client
 from app.integrations.mtn_momo import momo_client
+from app.integrations.orange_money import orange_client
+from app.integrations.wave import wave_client
 from app.ledger.ledger import (
     ChainIntegrityError,
     CryptographicError,
@@ -328,6 +331,19 @@ async def get_integrations_status() -> Any:
             "configured": momo_client.is_configured,
             "environment": momo_client.environment,
         },
+        "airtel_money": {
+            "configured": airtel_client.is_configured,
+            "environment": airtel_client.environment,
+            "country": airtel_client.country,
+        },
+        "orange_money": {
+            "configured": orange_client.is_configured,
+            "environment": orange_client.environment,
+        },
+        "wave": {
+            "configured": wave_client.is_configured,
+            "environment": wave_client.environment,
+        },
         "africas_talking": {
             "configured": africas_talking_client.is_configured,
             "username": africas_talking_client.username,
@@ -574,6 +590,212 @@ async def africas_talking_inbound(
         "receipt": tx_code,
         "amount": parsed["amount"],
     }
+
+
+@router.post("/integrations/airtel/request-to-pay")
+async def airtel_request_to_pay(
+    phone_number: str = Query(..., description="Subscriber phone number"),
+    amount: float = Query(..., gt=0),
+    reference: str = Query("NanoCoop"),
+) -> Any:
+    """Trigger Airtel Money USSD push prompt on member phone."""
+    return await airtel_client.request_to_pay(
+        phone_number=phone_number,
+        amount=amount,
+        reference=reference,
+    )
+
+
+@router.post("/integrations/airtel/callback")
+async def airtel_callback(
+    payload: dict[str, Any], db: aiosqlite.Connection = Depends(get_db)
+) -> Any:
+    """Receive Airtel Africa payment callback and record deposit if successful."""
+    parsed = airtel_client.parse_callback(payload)
+    if not parsed["is_successful"]:
+        return {"status": "IGNORED", "reason": f"Status is {parsed['raw_status']}"}
+
+    tx_code = parsed["transaction_id"] or str(uuid.uuid4())
+    raw_tx_id = f"AIRTEL:{tx_code}:{parsed['amount']}:{parsed['subscriber_phone']}"
+    tx_hash = hashlib.sha256(raw_tx_id.encode("utf-8")).hexdigest()
+
+    ledger = EventLedger(db)
+    if not await ledger.check_and_record_idempotency(tx_hash):
+        return {"status": "DROPPED", "message": f"Duplicate Airtel transaction {tx_code}"}
+
+    user_key = f"airtel_{parsed['subscriber_phone']}".ljust(32, "0")
+    last_event = await ledger.get_last_event()
+    previous_hash = last_event["current_hash"] if last_event else GENESIS_HASH
+
+    payload_obj = EventPayload(
+        amount=parsed["amount"],
+        currency=parsed["currency"],
+        user_public_key=user_key,
+        reference=tx_code,
+        notes=f"Airtel Money deposit from {parsed['subscriber_phone']}",
+    )
+    sig = sign_payload(_server_signer_priv, payload_obj.model_dump(exclude_none=True))
+    signatures_obj = EventSignatures(teller_sig=sig, user_sig=None)
+
+    payload_bytes = serialize_for_hashing(payload_obj.model_dump(exclude_none=True))
+    signatures_bytes = serialize_for_hashing(signatures_obj.model_dump(exclude_none=True))
+    current_hash = generate_event_hash(previous_hash, payload_bytes, signatures_bytes)
+
+    event_model = EventModel(
+        event_id=str(uuid.uuid4()),
+        timestamp=int(time.time()),
+        event_type=EventType.DEPOSIT_MOBILE_MONEY,
+        payload=payload_obj,
+        previous_hash=previous_hash,
+        signatures=signatures_obj,
+        current_hash=current_hash,
+    )
+
+    await ledger.append_event(event_model)
+    return {"status": "SUCCESS", "transaction_id": tx_code, "amount": parsed["amount"]}
+
+
+@router.post("/integrations/orange/initiate-payment")
+async def orange_initiate_payment(
+    order_id: str = Query(..., description="Unique order reference"),
+    amount: float = Query(..., gt=0),
+    currency: str = Query("XOF"),
+) -> Any:
+    """Initiate Orange Money Web Payment token session."""
+    return await orange_client.initiate_payment(
+        order_id=order_id,
+        amount=amount,
+        currency=currency,
+    )
+
+
+@router.post("/integrations/orange/callback")
+async def orange_callback(
+    payload: dict[str, Any], db: aiosqlite.Connection = Depends(get_db)
+) -> Any:
+    """Receive Orange Money notification callback and record deposit if successful."""
+    parsed = orange_client.parse_callback(payload)
+    if not parsed["is_successful"]:
+        return {"status": "IGNORED", "reason": f"Status is {parsed['raw_status']}"}
+
+    tx_code = parsed["transaction_id"] or str(uuid.uuid4())
+    raw_tx_id = f"ORANGE:{tx_code}:{parsed['amount']}:{parsed['customer_phone']}"
+    tx_hash = hashlib.sha256(raw_tx_id.encode("utf-8")).hexdigest()
+
+    ledger = EventLedger(db)
+    if not await ledger.check_and_record_idempotency(tx_hash):
+        return {"status": "DROPPED", "message": f"Duplicate Orange transaction {tx_code}"}
+
+    user_key = f"orange_{parsed['customer_phone']}".ljust(32, "0")
+    last_event = await ledger.get_last_event()
+    previous_hash = last_event["current_hash"] if last_event else GENESIS_HASH
+
+    payload_obj = EventPayload(
+        amount=parsed["amount"],
+        currency=parsed["currency"],
+        user_public_key=user_key,
+        reference=tx_code,
+        notes=f"Orange Money deposit for order {parsed['order_id']}",
+    )
+    sig = sign_payload(_server_signer_priv, payload_obj.model_dump(exclude_none=True))
+    signatures_obj = EventSignatures(teller_sig=sig, user_sig=None)
+
+    payload_bytes = serialize_for_hashing(payload_obj.model_dump(exclude_none=True))
+    signatures_bytes = serialize_for_hashing(signatures_obj.model_dump(exclude_none=True))
+    current_hash = generate_event_hash(previous_hash, payload_bytes, signatures_bytes)
+
+    event_model = EventModel(
+        event_id=str(uuid.uuid4()),
+        timestamp=int(time.time()),
+        event_type=EventType.DEPOSIT_MOBILE_MONEY,
+        payload=payload_obj,
+        previous_hash=previous_hash,
+        signatures=signatures_obj,
+        current_hash=current_hash,
+    )
+
+    await ledger.append_event(event_model)
+    return {"status": "SUCCESS", "transaction_id": tx_code, "amount": parsed["amount"]}
+
+
+@router.post("/integrations/wave/create-session")
+async def wave_create_session(
+    amount: float = Query(..., gt=0),
+    currency: str = Query("XOF"),
+    client_reference: str = Query("COOP-DEPOSIT"),
+) -> Any:
+    """Create a Wave Mobile Money checkout session."""
+    return await wave_client.create_checkout_session(
+        amount=amount,
+        currency=currency,
+        client_reference=client_reference,
+    )
+
+
+@router.post("/integrations/wave/webhook")
+async def wave_webhook(request: Request, db: aiosqlite.Connection = Depends(get_db)) -> Any:
+    """Receive Wave webhook event with HMAC-SHA256 signature verification."""
+    body_bytes = await request.body()
+    sig_header = request.headers.get("Wave-Signature", "")
+
+    if not wave_client.verify_webhook_signature(body_bytes, sig_header):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Wave webhook signature",
+        )
+
+    import json
+
+    try:
+        payload = json.loads(body_bytes.decode("utf-8"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload",
+        )
+
+    parsed = wave_client.parse_webhook(payload)
+    if not parsed["is_successful"]:
+        return {"status": "IGNORED", "reason": f"Event {parsed['event_type']} ignored"}
+
+    tx_code = parsed["transaction_id"] or str(uuid.uuid4())
+    raw_tx_id = f"WAVE:{tx_code}:{parsed['amount']}:{parsed['currency']}"
+    tx_hash = hashlib.sha256(raw_tx_id.encode("utf-8")).hexdigest()
+
+    ledger = EventLedger(db)
+    if not await ledger.check_and_record_idempotency(tx_hash):
+        return {"status": "DROPPED", "message": f"Duplicate Wave transaction {tx_code}"}
+
+    user_key = f"wave_{parsed['payer_mobile']}".ljust(32, "0")
+    last_event = await ledger.get_last_event()
+    previous_hash = last_event["current_hash"] if last_event else GENESIS_HASH
+
+    payload_obj = EventPayload(
+        amount=parsed["amount"],
+        currency=parsed["currency"],
+        user_public_key=user_key,
+        reference=tx_code,
+        notes=f"Wave deposit ref {parsed['client_reference']}",
+    )
+    sig = sign_payload(_server_signer_priv, payload_obj.model_dump(exclude_none=True))
+    signatures_obj = EventSignatures(teller_sig=sig, user_sig=None)
+
+    payload_bytes = serialize_for_hashing(payload_obj.model_dump(exclude_none=True))
+    signatures_bytes = serialize_for_hashing(signatures_obj.model_dump(exclude_none=True))
+    current_hash = generate_event_hash(previous_hash, payload_bytes, signatures_bytes)
+
+    event_model = EventModel(
+        event_id=str(uuid.uuid4()),
+        timestamp=int(time.time()),
+        event_type=EventType.DEPOSIT_MOBILE_MONEY,
+        payload=payload_obj,
+        previous_hash=previous_hash,
+        signatures=signatures_obj,
+        current_hash=current_hash,
+    )
+
+    await ledger.append_event(event_model)
+    return {"status": "SUCCESS", "transaction_id": tx_code, "amount": parsed["amount"]}
 
 
 # --- SMS Gateway Webhook (from nanocoop-sms-bridge Android receiver) ---

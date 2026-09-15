@@ -70,7 +70,9 @@ export interface PaginatedEvents {
   total_count: number;
 }
 
-const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+const DEFAULT_API_URL =
+  (process.env as Record<string, string | undefined>).EXPO_PUBLIC_API_URL ||
+  'http://localhost:8000';
 
 export class NanoCoopApiClient {
   private baseUrl: string;
@@ -124,5 +126,9 @@ export class NanoCoopApiClient {
     const res = await fetch(`${this.baseUrl}/api/v1/audit/verify`);
     if (!res.ok) throw new Error(`Failed to verify audit: ${res.statusText}`);
     return await res.json();
+  }
+
+  public async verifyChain(): Promise<AuditVerification> {
+    return this.verifyAudit();
   }
 }
