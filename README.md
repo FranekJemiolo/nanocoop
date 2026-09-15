@@ -10,10 +10,11 @@
 [![Managed with uv](https://img.shields.io/badge/Managed%20with-uv-purple.svg)](https://github.com/astral-sh/uv)
 [![React Native / Expo](https://img.shields.io/badge/Expo-SDK%2051-black.svg)](https://expo.dev/)
 [![Live Web Demo](https://img.shields.io/badge/Demo-GitHub%20Pages-success.svg)](https://franekjemiolo.github.io/nanocoop/)
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose%20Validated-blue.svg)](docker-compose.yml)
 
 *A zero-trust, offline-capable micro-core banking system featuring an append-only event ledger, Merkle tree cryptographic audit proofs, Ed25519 multi-signature authorization, and an asynchronous SMS bridge for mobile money integration.*
 
-[**Live Web Demo**](https://franekjemiolo.github.io/nanocoop/) • [**Download Android APK**](https://github.com/FranekJemiolo/nanocoop/releases) • [**Architectural Design (DESIGN.md)**](DESIGN.md)
+[**Live Interactive Web Demo**](https://franekjemiolo.github.io/nanocoop/) • [**Download Android APK**](https://github.com/FranekJemiolo/nanocoop/releases) • [**Architectural Design (DESIGN.md)**](DESIGN.md) • [**Implementation Plan (docs/PLAN.md)**](docs/PLAN.md) • [**Engineering Journal (docs/JOURNAL.md)**](docs/JOURNAL.md)
 
 </div>
 
@@ -56,6 +57,22 @@ These local institutions operate in extreme, resource-constrained environments:
 <img src="docs/screenshots/audit.jpg" width="850" alt="NanoCoop Audit View" />
 
 </div>
+
+---
+
+## 🌐 Live Interactive GitHub Pages Demo
+
+You can try NanoCoop immediately without installing anything:
+
+👉 **[Launch NanoCoop Web Demo](https://franekjemiolo.github.io/nanocoop/)**
+
+The GitHub Pages web deployment features an **Interactive In-Browser Ledger Engine** running directly in your browser:
+- **Pre-Loaded Members:** Switch between members (Sarah Mwangi, David Kipkorir) with pre-loaded cryptographic NFC keys.
+- **Live Multi-Sig Signing:** Enter an amount, watch the dual Ed25519 signatures calculate, and see the event append to the live chain.
+- **1-Click SMS Payment Simulation:** Click **📱 Sim SMS** on the dashboard to simulate an incoming M-Pesa payment receipt (`$50.00`).
+- **Live Merkle Tree Recalculation:** Watch the Merkle Root update mathematically in real-time as each block is added.
+- **Offline Mode & Sync:** Tap the **Online** pill to switch to **Offline**, create transactions to buffer them in the local queue, and tap **Sync (N)** to flush them.
+- **Dual Mode Switcher:** Tap the **Interactive Demo** badge in the header to switch to **Local Core** mode when running the Python backend locally at `localhost:8000`.
 
 ---
 
@@ -145,11 +162,17 @@ nanocoop/
 │       ├── tests/              # Jest tests with hardware dependency injection
 │       └── package.json
 ├── docs/
+│   ├── PLAN.md                 # Complete implementation plan
+│   ├── JOURNAL.md              # Engineering decision & milestone execution journal
 │   └── screenshots/            # Verified application captures
-├── scripts/                    # Screenshot & build automation scripts
+├── scripts/
+│   ├── capture_ui.sh           # UI screenshot automation script
+│   └── run_docker_tests.sh     # Docker Compose test runner script
+├── docker-compose.yml          # Multi-container orchestration (Core, SMS Bridge, Teller Web)
+├── docker-compose.test.yml     # Automated containerized E2E integration test suite
 ├── package.json                # Root npm workspaces configuration
 ├── DESIGN.md                   # In-depth architectural & cryptographic specification
-└── README.md
+└── README.md                   # Public open-source documentation
 ```
 
 ---
@@ -180,6 +203,7 @@ To prevent duplicate SMS receipt submissions from double-crediting accounts, inc
 ### Prerequisites
 - Node.js 20+ and npm
 - Python 3.12+ with [**uv**](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- Docker and Docker Compose (optional, for containerized execution)
 - Git
 
 ### 1. Clone & Install Dependencies
@@ -225,6 +249,74 @@ npx expo start --web
 
 # Or export static production bundle:
 npx expo export -p web
+```
+
+---
+
+## 🐳 Docker Compose & Containerized Validation
+
+### 1. Run the Full 3-Tier Cluster
+Run the complete stack (Core Ledger with SQLite in WAL mode volume, SMS Bridge daemon, and Teller Web UI):
+```bash
+docker compose up --build
+```
+- Core Backend API: `http://localhost:8000`
+- API Interactive Docs: `http://localhost:8000/docs`
+- Teller Web Application: `http://localhost:3000`
+
+### 2. Run Automated Containerized Tests Locally
+Execute the end-to-end integration test suite inside isolated Docker containers:
+```bash
+./scripts/run_docker_tests.sh
+```
+Or directly with Docker Compose:
+```bash
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from e2e-tester
+```
+
+---
+
+## 📡 REST API Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service health status |
+| `GET` | `/api/v1/stats` | Vault balance, member count, event count, and Merkle root |
+| `GET` | `/api/v1/events` | Cursor-paginated immutable event log |
+| `POST` | `/api/v1/events` | Submit dual-signed transaction event |
+| `GET` | `/api/v1/balance/{pubkey}` | Get account state folded by State Reducer |
+| `GET` | `/api/v1/accounts` | Get all member account balances across the cooperative |
+| `GET` | `/api/v1/audit/verify` | Verify cryptographic chain integrity and Merkle tree root |
+| `POST` | `/api/v1/sms/webhook` | Ingest parsed mobile money receipts with idempotency check |
+
+### Example: Check Community Stats
+```bash
+curl -s http://localhost:8000/api/v1/stats | jq .
+```
+Response:
+```json
+{
+  "total_balance": 150.0,
+  "total_members": 2,
+  "total_events": 2,
+  "merkle_root": "7a3f8901c0824ba1e8912cb901428ba901248ba0912481092a481b9012481234",
+  "is_chain_valid": true
+}
+```
+
+### Example: Verify Cryptographic Chain Integrity
+```bash
+curl -s http://localhost:8000/api/v1/audit/verify | jq .
+```
+Response:
+```json
+{
+  "is_valid": true,
+  "total_events": 2,
+  "merkle_root": "7a3f8901c0824ba1e8912cb901428ba901248ba0912481092a481b9012481234",
+  "last_hash": "0284ac91e84a9218bc894019283ba874b01984218ba901248ba0912481112233",
+  "tamper_details": null
+}
 ```
 
 ---
