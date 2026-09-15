@@ -6,7 +6,6 @@ from app.integrations.daraja import DarajaClient
 from app.integrations.mtn_momo import MtnMoMoClient
 from app.integrations.africas_talking import AfricasTalkingClient
 
-
 # --- Safaricom Daraja Tests ---
 
 
@@ -267,7 +266,9 @@ async def test_africas_talking_send_sms():
 
     # Configured with mock transport
     mock_transport = httpx.MockTransport(
-        lambda req: httpx.Response(201, json={"SMSMessageData": {"Recipients": [{"status": "Success"}]}})
+        lambda req: httpx.Response(
+            201, json={"SMSMessageData": {"Recipients": [{"status": "Success"}]}}
+        )
     )
     async with httpx.AsyncClient(transport=mock_transport) as http_client:
         client_configured = AfricasTalkingClient(

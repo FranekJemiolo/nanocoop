@@ -241,7 +241,9 @@ async def test_daraja_stk_callback_success_failed_and_duplicate(async_client):
     assert res.json()["receipt_number"] == "MPESA_REC_01"
 
     # Duplicate callback -> DROPPED
-    res_dup = await async_client.post("/api/v1/integrations/mpesa/stk-callback", json=success_callback)
+    res_dup = await async_client.post(
+        "/api/v1/integrations/mpesa/stk-callback", json=success_callback
+    )
     assert res_dup.status_code == 200
     assert res_dup.json()["status"] == "DROPPED"
 
@@ -256,7 +258,9 @@ async def test_daraja_stk_callback_success_failed_and_duplicate(async_client):
             }
         }
     }
-    res_fail = await async_client.post("/api/v1/integrations/mpesa/stk-callback", json=failed_callback)
+    res_fail = await async_client.post(
+        "/api/v1/integrations/mpesa/stk-callback", json=failed_callback
+    )
     assert res_fail.status_code == 200
     assert res_fail.json()["status"] == "FAILED"
 
@@ -286,7 +290,9 @@ async def test_daraja_c2b_validation_and_confirmation(async_client):
     assert res_conf.json()["ResultCode"] == 0
 
     # Duplicate confirmation hook -> DROPPED
-    res_conf_dup = await async_client.post("/api/v1/integrations/mpesa/c2b-confirmation", json=c2b_data)
+    res_conf_dup = await async_client.post(
+        "/api/v1/integrations/mpesa/c2b-confirmation", json=c2b_data
+    )
     assert res_conf_dup.status_code == 200
     assert res_conf_dup.json()["status"] == "DROPPED"
 
@@ -347,12 +353,16 @@ async def test_africas_talking_inbound_and_duplicate(async_client):
         "from": "+254712000000",
         "id": "SMS_TEST_001",
     }
-    res_val = await async_client.post("/api/v1/integrations/africas-talking/inbound", json=valid_sms)
+    res_val = await async_client.post(
+        "/api/v1/integrations/africas-talking/inbound", json=valid_sms
+    )
     assert res_val.status_code == 200
     assert res_val.json()["status"] == "SUCCESS"
     assert res_val.json()["amount"] == 90.0
 
     # Duplicate SMS -> DROPPED
-    res_dup = await async_client.post("/api/v1/integrations/africas-talking/inbound", json=valid_sms)
+    res_dup = await async_client.post(
+        "/api/v1/integrations/africas-talking/inbound", json=valid_sms
+    )
     assert res_dup.status_code == 200
     assert res_dup.json()["status"] == "DROPPED"

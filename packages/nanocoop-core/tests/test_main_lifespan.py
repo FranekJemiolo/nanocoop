@@ -12,6 +12,7 @@ from app.main import app, lifespan
 async def test_app_lifespan(tmp_path):
     test_db_path = str(tmp_path / "test_lifespan.db")
     import app.core.config
+
     old_path = app.core.config.settings.DB_PATH
     app.core.config.settings.DB_PATH = test_db_path
 
@@ -55,7 +56,9 @@ async def test_create_event_internal_server_error(tmp_path):
         }
 
         # Mock EventLedger.append_event to raise an unexpected RuntimeError
-        with patch("app.api.routes.EventLedger.append_event", side_effect=RuntimeError("Disk crash")):
+        with patch(
+            "app.api.routes.EventLedger.append_event", side_effect=RuntimeError("Disk crash")
+        ):
             res = await client.post("/api/v1/events", json=dummy_event)
             assert res.status_code == 500
             assert "Ledger error: Disk crash" in res.json()["detail"]

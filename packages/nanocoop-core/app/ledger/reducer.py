@@ -97,7 +97,9 @@ def calculate_all_accounts(event_log: list[dict[str, Any]]) -> dict[str, dict[st
             accrued_total = amount * (1.0 + (interest_rate / 100.0))
             accounts[user_key]["loan_balance"] += accrued_total
         elif event_type == "LOAN_REPAID":
-            accounts[user_key]["loan_balance"] = max(0.0, accounts[user_key]["loan_balance"] - amount)
+            accounts[user_key]["loan_balance"] = max(
+                0.0, accounts[user_key]["loan_balance"] - amount
+            )
         elif event_type == "SOCIAL_FUND_CONTRIBUTION":
             accounts[user_key]["social_fund_contributions"] += amount
         elif event_type == "SOCIAL_FUND_PAYOUT":
@@ -106,7 +108,9 @@ def calculate_all_accounts(event_log: list[dict[str, Any]]) -> dict[str, dict[st
         accounts[user_key]["savings_balance"] = round(accounts[user_key]["savings_balance"], 2)
         accounts[user_key]["current_balance"] = accounts[user_key]["savings_balance"]
         accounts[user_key]["loan_balance"] = round(accounts[user_key]["loan_balance"], 2)
-        accounts[user_key]["social_fund_contributions"] = round(accounts[user_key]["social_fund_contributions"], 2)
+        accounts[user_key]["social_fund_contributions"] = round(
+            accounts[user_key]["social_fund_contributions"], 2
+        )
         accounts[user_key]["net_balance"] = round(
             accounts[user_key]["savings_balance"] - accounts[user_key]["loan_balance"], 2
         )

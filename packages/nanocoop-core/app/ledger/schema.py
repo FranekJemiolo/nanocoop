@@ -20,17 +20,27 @@ class EventPayload(BaseModel):
     amount: float = Field(..., gt=0, description="Positive transaction amount")
     currency: str = Field(default="USD", min_length=3, max_length=5)
     user_public_key: str = Field(..., min_length=32, description="Ed25519 User public key")
-    reference: str | None = Field(default=None, description="External reference (e.g. MPESA code, loan ID)")
+    reference: str | None = Field(
+        default=None, description="External reference (e.g. MPESA code, loan ID)"
+    )
     notes: str | None = Field(default=None, description="Optional ledger notes")
-    loan_id: str | None = Field(default=None, description="Unique identifier for micro-loan contracts")
-    interest_rate: float | None = Field(default=None, ge=0.0, description="Interest rate percentage (e.g. 5.0 for 5%)")
-    term_months: int | None = Field(default=None, ge=1, description="Loan repayment duration in months")
+    loan_id: str | None = Field(
+        default=None, description="Unique identifier for micro-loan contracts"
+    )
+    interest_rate: float | None = Field(
+        default=None, ge=0.0, description="Interest rate percentage (e.g. 5.0 for 5%)"
+    )
+    term_months: int | None = Field(
+        default=None, ge=1, description="Loan repayment duration in months"
+    )
 
     model_config = {"extra": "forbid"}
 
 
 class EventSignatures(BaseModel):
-    teller_sig: str = Field(..., min_length=64, description="Cryptographic signature by teller or gateway")
+    teller_sig: str = Field(
+        ..., min_length=64, description="Cryptographic signature by teller or gateway"
+    )
     user_sig: str | None = Field(
         default=None, description="Cryptographic signature by user via NFC/QR"
     )

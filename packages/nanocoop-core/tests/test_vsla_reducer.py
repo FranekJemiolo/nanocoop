@@ -96,16 +96,52 @@ def test_calculate_all_accounts_and_community_metrics():
         # Event with missing user_public_key to test edge case branch
         {"event_type": "DEPOSIT_CASH", "timestamp": 50, "payload": {}},
         # U1 operations
-        {"event_type": "DEPOSIT_CASH", "timestamp": 100, "payload": {"user_public_key": u1, "amount": 300.0}},
-        {"event_type": "WITHDRAWAL_CASH", "timestamp": 110, "payload": {"user_public_key": u1, "amount": 50.0}},
-        {"event_type": "INTEREST_APPLIED", "timestamp": 120, "payload": {"user_public_key": u1, "amount": 10.0}},
-        {"event_type": "LOAN_DISBURSED", "timestamp": 130, "payload": {"user_public_key": u1, "amount": 100.0, "interest_rate": 5.0}},
-        {"event_type": "LOAN_REPAID", "timestamp": 140, "payload": {"user_public_key": u1, "amount": 50.0}},
-        {"event_type": "SOCIAL_FUND_CONTRIBUTION", "timestamp": 150, "payload": {"user_public_key": u1, "amount": 15.0}},
-        {"event_type": "SOCIAL_FUND_PAYOUT", "timestamp": 160, "payload": {"user_public_key": u1, "amount": 10.0}},
+        {
+            "event_type": "DEPOSIT_CASH",
+            "timestamp": 100,
+            "payload": {"user_public_key": u1, "amount": 300.0},
+        },
+        {
+            "event_type": "WITHDRAWAL_CASH",
+            "timestamp": 110,
+            "payload": {"user_public_key": u1, "amount": 50.0},
+        },
+        {
+            "event_type": "INTEREST_APPLIED",
+            "timestamp": 120,
+            "payload": {"user_public_key": u1, "amount": 10.0},
+        },
+        {
+            "event_type": "LOAN_DISBURSED",
+            "timestamp": 130,
+            "payload": {"user_public_key": u1, "amount": 100.0, "interest_rate": 5.0},
+        },
+        {
+            "event_type": "LOAN_REPAID",
+            "timestamp": 140,
+            "payload": {"user_public_key": u1, "amount": 50.0},
+        },
+        {
+            "event_type": "SOCIAL_FUND_CONTRIBUTION",
+            "timestamp": 150,
+            "payload": {"user_public_key": u1, "amount": 15.0},
+        },
+        {
+            "event_type": "SOCIAL_FUND_PAYOUT",
+            "timestamp": 160,
+            "payload": {"user_public_key": u1, "amount": 10.0},
+        },
         # U2 operations
-        {"event_type": "DEPOSIT_MOBILE_MONEY", "timestamp": 200, "payload": {"user_public_key": u2, "amount": 500.0}},
-        {"event_type": "SOCIAL_FUND_CONTRIBUTION", "timestamp": 210, "payload": {"user_public_key": u2, "amount": 25.0}},
+        {
+            "event_type": "DEPOSIT_MOBILE_MONEY",
+            "timestamp": 200,
+            "payload": {"user_public_key": u2, "amount": 500.0},
+        },
+        {
+            "event_type": "SOCIAL_FUND_CONTRIBUTION",
+            "timestamp": 210,
+            "payload": {"user_public_key": u2, "amount": 25.0},
+        },
     ]
 
     accounts = calculate_all_accounts(event_log)

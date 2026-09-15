@@ -201,7 +201,9 @@ async def test_ledger_chain_break_and_metrics(memory_db):
     await ledger.append_event(ev1)
 
     # Append valid event 2
-    ev2 = create_signed_event(u_priv, t_priv, u_pub, EventType.SOCIAL_FUND_CONTRIBUTION, 15.0, ev1.current_hash)
+    ev2 = create_signed_event(
+        u_priv, t_priv, u_pub, EventType.SOCIAL_FUND_CONTRIBUTION, 15.0, ev1.current_hash
+    )
     await ledger.append_event(ev2)
 
     # Check community metrics
@@ -211,7 +213,9 @@ async def test_ledger_chain_break_and_metrics(memory_db):
     assert metrics["total_capital"] == 115.0
 
     # Corrupt event 2 previous_hash in the database to test verify_chain_integrity failure branch
-    await memory_db.execute("UPDATE events SET previous_hash = 'tampered_previous_hash' WHERE id = 2")
+    await memory_db.execute(
+        "UPDATE events SET previous_hash = 'tampered_previous_hash' WHERE id = 2"
+    )
     await memory_db.commit()
 
     is_valid, details = await ledger.verify_chain_integrity()
@@ -225,6 +229,7 @@ async def test_database_get_db_generator(tmp_path):
     await init_db(test_db_path)
 
     import app.core.config
+
     old_path = app.core.config.settings.DB_PATH
     app.core.config.settings.DB_PATH = test_db_path
     try:

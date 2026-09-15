@@ -476,9 +476,7 @@ async def mtn_request_to_pay(
 
 
 @router.post("/integrations/mtn/callback")
-async def mtn_callback(
-    payload: dict[str, Any], db: aiosqlite.Connection = Depends(get_db)
-) -> Any:
+async def mtn_callback(payload: dict[str, Any], db: aiosqlite.Connection = Depends(get_db)) -> Any:
     """Receive MTN Mobile Money webhook callback and record deposit if successful."""
     parsed = momo_client.parse_callback(payload)
     if not parsed["is_successful"]:

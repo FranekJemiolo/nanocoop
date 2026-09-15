@@ -117,7 +117,9 @@ class EventLedger:
             EventType.INTEREST_APPLIED,
         ):
             if not event.signatures.teller_sig:
-                raise CryptographicError(f"Teller signature is required for {event.event_type.value}")
+                raise CryptographicError(
+                    f"Teller signature is required for {event.event_type.value}"
+                )
             if event.signatures.user_sig:
                 user_valid = verify_signature(
                     public_key_hex=event.payload.user_public_key,
