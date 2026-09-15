@@ -92,9 +92,24 @@ This journal tracks all architecture decisions, milestones executed, test output
 ## [Entry 006] Milestone 6: Documentation, Interactive Web Demo, and Dockerized Test Suite
 - **Timestamp:** 2026-09-15T15:25:00Z
 - **Objective:** Build an interactive in-browser demo engine for GitHub Pages, implement local Docker Compose test validation, and publish documentation.
+- **Verification:**
+  - `docker-compose.test.yml` executed locally with `./scripts/run_docker_tests.sh`. All 16 tests passed with 93.09% code coverage inside Docker with a secure SQLite WAL backend volume.
+  - Public repository created on GitHub: https://github.com/FranekJemiolo/nanocoop
+  - Git commit `b259615` pushed to `main`.
+
+---
+
+## [Entry 007] Production Handover & Live Deployment Verification
+- **Timestamp:** 2026-09-15T19:27:00Z
+- **Objective:** Deploy the interactive web demo to GitHub Pages, verify production readiness, and complete final handover.
 - **Actions Executed:**
-  - Upgraded `useLedgerStore.ts` with an in-browser live demo ledger engine so visitors on GitHub Pages can create deposits, withdrawals, and simulate M-Pesa SMS receipts live in the browser without a local backend.
-  - Authored `docs/PLAN.md` preserving the full technical plan.
-  - Authored Dockerfiles for `nanocoop-core`, `nanocoop-sms-bridge`, and `nanocoop-teller`.
-  - Authored `docker-compose.yml` and `docker-compose.test.yml` with automated containerized E2E test suite.
-  - Pushed repository to `FranekJemiolo/nanocoop` on GitHub.
+  - Built clean static web production export with `npx expo export -p web`.
+  - Pushed `gh-pages` branch to `origin/gh-pages`.
+  - Configured and activated GitHub Pages via GitHub API.
+  - Verified live deployment: `https://franekjemiolo.github.io/nanocoop/` returning `HTTP/2 200 OK`.
+  - Validated interactive in-browser demo functionality: pre-loaded member accounts, dual Ed25519 multi-sig signing, live Merkle tree calculations, and 1-click M-Pesa SMS simulation.
+- **Verification:**
+  - `curl -sI https://franekjemiolo.github.io/nanocoop/` → `HTTP/2 200 OK`.
+  - Docker Compose test suite passes with zero errors (`./scripts/run_docker_tests.sh`).
+  - Monorepo test commands all passing: `npm run test:core`, `npm run test:sms`, `npm run test:teller`, `npm run build:web`.
+
