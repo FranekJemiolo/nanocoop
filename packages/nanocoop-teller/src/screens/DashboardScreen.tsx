@@ -175,7 +175,7 @@ export const DashboardScreen: React.FC = memo(() => {
           onPress={() => setActiveTab('transaction')}
           activeOpacity={0.8}
         >
-          <Text style={styles.depositBtnText}>+ Deposit Cash</Text>
+          <Text style={styles.depositBtnText}>+ Deposit</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -183,7 +183,15 @@ export const DashboardScreen: React.FC = memo(() => {
           onPress={() => setActiveTab('transaction')}
           activeOpacity={0.8}
         >
-          <Text style={styles.withdrawBtnText}>- Withdraw Cash</Text>
+          <Text style={styles.withdrawBtnText}>- Withdraw</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.smsBtn]}
+          onPress={() => useLedgerStore.getState().simulateIncomingSmsPayment(50.0, '+254712345678')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.smsBtnText}>📱 Sim SMS</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -194,6 +202,7 @@ export const DashboardScreen: React.FC = memo(() => {
           <Text style={styles.auditBtnText}>Audit</Text>
         </TouchableOpacity>
       </View>
+
 
       {/* Recent Activity Header */}
       <View style={styles.listHeader}>
@@ -352,6 +361,17 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontWeight: '700',
     fontSize: 13,
+  },
+  smsBtn: {
+    backgroundColor: '#0284C7',
+    borderWidth: 1,
+    borderColor: '#0369A1',
+    flex: 1.1,
+  },
+  smsBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
   },
   auditBtn: {
     backgroundColor: '#1E293B',

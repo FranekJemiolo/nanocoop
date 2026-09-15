@@ -3,8 +3,15 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLedgerStore } from '../store/useLedgerStore';
 
 export const Header: React.FC = React.memo(() => {
-  const { isOnline, pendingQueue, flushPendingQueue, tellerKeyPair, setOnlineStatus } =
-    useLedgerStore();
+  const {
+    isOnline,
+    isDemoMode,
+    setDemoMode,
+    pendingQueue,
+    flushPendingQueue,
+    tellerKeyPair,
+    setOnlineStatus,
+  } = useLedgerStore();
 
   const handleSync = useCallback(async () => {
     await flushPendingQueue();
@@ -13,6 +20,10 @@ export const Header: React.FC = React.memo(() => {
   const toggleNetwork = useCallback(() => {
     setOnlineStatus(!isOnline);
   }, [isOnline, setOnlineStatus]);
+
+  const toggleDemo = useCallback(() => {
+    setDemoMode(!isDemoMode);
+  }, [isDemoMode, setDemoMode]);
 
   const shortTellerKey = tellerKeyPair?.publicKeyHex
     ? `${tellerKeyPair.publicKeyHex.substring(0, 6)}...${tellerKeyPair.publicKeyHex.substring(58)}`
@@ -27,11 +38,17 @@ export const Header: React.FC = React.memo(() => {
               <Text style={styles.logoLetter}>N</Text>
             </View>
             <Text style={styles.title}>NanoCoop</Text>
-            <View style={styles.badgeCoop}>
-              <Text style={styles.badgeCoopText}>VSLA Core</Text>
-            </View>
+            <TouchableOpacity
+              style={[styles.badgeCoop, isDemoMode && styles.badgeDemo]}
+              onPress={toggleDemo}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.badgeCoopText, isDemoMode && styles.badgeDemoText]}>
+                {isDemoMode ? 'Interactive Demo' : 'Local Core'}
+              </Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.subtitle}>Teller Node: {shortTellerKey}</Text>
+          <Text style={styles.subtitle}>Teller: {shortTellerKey}</Text>
         </View>
 
         <View style={styles.statusRow}>
@@ -46,7 +63,7 @@ export const Header: React.FC = React.memo(() => {
             <Text
               style={[styles.statusText, isOnline ? styles.textOnline : styles.textOffline]}
             >
-              {isOnline ? 'Online' : 'Offline Mode'}
+              {isOnline ? 'Online' : 'Offline'}
             </Text>
           </TouchableOpacity>
 
@@ -62,6 +79,7 @@ export const Header: React.FC = React.memo(() => {
     </View>
   );
 });
+
 
 Header.displayName = 'Header';
 
@@ -111,11 +129,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.3)',
   },
+  badgeDemo: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+  },
   badgeCoopText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#34D399',
     textTransform: 'uppercase',
+  },
+  badgeDemoText: {
+    color: '#60A5FA',
   },
   subtitle: {
     fontSize: 11,

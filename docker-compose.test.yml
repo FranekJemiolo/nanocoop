@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  core:
+    build:
+      context: ./packages/nanocoop-core
+      dockerfile: Dockerfile
+    container_name: nanocoop-core-test
+    environment:
+      - NANOCOOP_HOST=0.0.0.0
+      - NANOCOOP_PORT=8000
+      - NANOCOOP_DB_PATH=/data/nanocoop_test.db
+    volumes:
+      - test-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  e2e-tester:
+    build:
+      context: ./packages/nanocoop-core
+      dockerfile: Dockerfile
+    container_name: nanocoop-e2e-tester
+    depends_on:
+      core:
+        condition: service_healthy
+    environment:
+      - NANOCOOP_CORE_URL=http://core:8000
+    command: ["uv", "run", "pytest", "--cov=app", "--cov-report=term-missing", "--cov-fail-under=85", "tests/"]
+
+volumes:
+  test-data:

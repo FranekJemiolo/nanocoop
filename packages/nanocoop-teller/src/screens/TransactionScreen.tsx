@@ -128,13 +128,42 @@ export const TransactionScreen: React.FC = memo(() => {
           placeholderTextColor="#475569"
         />
 
+        {/* Quick Member Selection Chips */}
+        <Text style={styles.inputLabel}>SELECT MEMBER (OR PASTE KEY)</Text>
+        <View style={styles.memberChipsRow}>
+          {useLedgerStore.getState().sampleMembers.map((m) => (
+            <TouchableOpacity
+              key={m.publicKey}
+              style={[
+                styles.memberChip,
+                userPublicKey === m.publicKey && styles.memberChipActive,
+              ]}
+              onPress={() => {
+                setUserPublicKey(m.publicKey);
+                setUserPrivateKey(m.privateKey);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.memberChipText,
+                  userPublicKey === m.publicKey && styles.memberChipTextActive,
+                ]}
+              >
+                {m.name.split(' ')[0]} (NFC Loaded)
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={styles.memberSection}>
           <View style={styles.memberHeaderRow}>
             <Text style={styles.inputLabel}>CUSTOMER MEMBER PUBLIC KEY</Text>
             <TouchableOpacity onPress={handleGenerateMemberKey} activeOpacity={0.7}>
-              <Text style={styles.generateLink}>+ Generate / Sim NFC</Text>
+              <Text style={styles.generateLink}>+ New Custom Keypair</Text>
             </TouchableOpacity>
           </View>
+
           <TextInput
             style={styles.keyInput}
             value={userPublicKey}
@@ -353,6 +382,32 @@ const styles = StyleSheet.create({
   },
   memberSection: {
     marginBottom: 14,
+  },
+  memberChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  memberChip: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  memberChipActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: '#10B981',
+  },
+  memberChipText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  memberChipTextActive: {
+    color: '#34D399',
+    fontWeight: '700',
   },
   memberHeaderRow: {
     flexDirection: 'row',
