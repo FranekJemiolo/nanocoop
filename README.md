@@ -12,9 +12,7 @@
 [![Live Web Demo](https://img.shields.io/badge/Demo-GitHub%20Pages-success.svg)](https://franekjemiolo.github.io/nanocoop/)
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose%20Validated-blue.svg)](docker-compose.yml)
 
-*A zero-trust, offline-capable micro-core banking system featuring an append-only event ledger, Merkle tree cryptographic audit proofs, Ed25519 multi-signature authorization, and an asynchronous SMS bridge for mobile money integration.*
-
-[**Live Interactive Web Demo**](https://franekjemiolo.github.io/nanocoop/) • [**Download Android APK**](https://github.com/FranekJemiolo/nanocoop/releases) • [**Architectural Design (DESIGN.md)**](DESIGN.md) • [**Implementation Plan (docs/PLAN.md)**](docs/PLAN.md) • [**Engineering Journal (docs/JOURNAL.md)**](docs/JOURNAL.md)
+[**Live Interactive Web Demo**](https://franekjemiolo.github.io/nanocoop/) • [**Download Android APK**](https://github.com/FranekJemiolo/nanocoop/releases) • [**Field Deployment (docs/FIELD_DEPLOYMENT.md)**](docs/FIELD_DEPLOYMENT.md) • [**Architectural Design (DESIGN.md)**](DESIGN.md) • [**Implementation Plan (docs/PLAN.md)**](docs/PLAN.md) • [**Engineering Journal (docs/JOURNAL.md)**](docs/JOURNAL.md)
 
 </div>
 
@@ -249,6 +247,33 @@ npx expo start --web
 
 # Or export static production bundle:
 npx expo export -p web
+```
+
+### 5. Administrative CLI & Seed Tools
+The Python core includes an offline CLI utility for branch managers and field officers:
+```bash
+cd packages/nanocoop-core
+
+# 1. Check cryptographic chain integrity and Merkle tree root
+uv run nanocoop verify
+
+# 2. View VSLA community portfolio (Savings, Loans, Welfare Fund)
+uv run nanocoop stats
+
+# 3. Create new member credentials (outputs printable QR/NFC keys)
+uv run nanocoop create-member --name "Esther Mutua"
+
+# 4. View formatted member passbook statement
+uv run nanocoop passbook <user_public_key>
+
+# 5. Seed a new cooperative with realistic members and transactions
+uv run nanocoop seed
+```
+
+### 6. System Health Diagnostic (Doctor)
+Run the diagnostic doctor to check environment readiness:
+```bash
+./scripts/doctor.sh
 ```
 
 ---
